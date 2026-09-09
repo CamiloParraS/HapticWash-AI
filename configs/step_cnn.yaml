@@ -1,0 +1,13 @@
+# Step CNN configuration
+model:
+  type: cnn1d
+  num_classes: 10
+
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 0.001
+
+preprocessing:
+  window_size: 256
+  sample_rate: 100

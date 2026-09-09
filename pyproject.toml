@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "haptic-ai"
+version = "0.1.0"
+description = "Haptic gesture recognition with ML"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "pyarrow",
+    "scikit-learn",
+    "imbalanced-learn",
+    "tensorflow==2.17.*",
+    "matplotlib",
+    "pyyaml",
+    "pydantic",
+    "requests",
+    "tqdm",
+]
+
+[dependency-groups]
+dev = ["pytest", "ruff", "jupyter"]
