@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hapticwash/model_meta.schema.json",
+  "title": "HapticWash model_meta.json (SPEC 8.2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version", "model_id", "model_version", "task", "sample_rate_hz",
+    "window_size_s", "window_stride_s", "channels", "preprocessing",
+    "input", "output", "labels", "postprocessing", "training"
+  ],
+  "properties": {
+    "spec_version": { "const": "1.0" },
+    "model_id": { "type": "string", "minLength": 1 },
+    "model_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "task": { "enum": ["step_classification", "spotting"] },
+    "sample_rate_hz": { "const": 50 },
+    "window_size_s": { "type": "number", "exclusiveMinimum": 0 },
+    "window_stride_s": { "type": "number", "exclusiveMinimum": 0 },
+    "channels": {
+      "type": "array",
+      "minItems": 6, "maxItems": 6,
+      "prefixItems": [
+        { "const": "ax" }, { "const": "ay" }, { "const": "az" },
+        { "const": "gx" }, { "const": "gy" }, { "const": "gz" }
+      ]
+    },
+    "preprocessing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bandpass", "gravity_align", "gravity_lowpass_hz", "normalization", "norm_mean", "norm_std"],
+      "properties": {
+        "bandpass": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["low_hz", "high_hz", "order"],
+          "properties": {
+            "low_hz": { "type": "number", "exclusiveMinimum": 0 },
+            "high_hz": { "type": "number", "exclusiveMinimum": 0 },
+            "order": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "gravity_align": { "type": "boolean" },
+        "gravity_lowpass_hz": { "type": "number", "exclusiveMinimum": 0 },
+        "normalization": { "enum": ["zscore_per_channel", "none"] },
+        "norm_mean": { "type": "array", "items": { "type": "number" }, "minItems": 6, "maxItems": 6 },
+        "norm_std": { "type": "array", "items": { "type": "number" }, "minItems": 6, "maxItems": 6 }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shape", "dtype"],
+      "properties": {
+        "shape": {
+          "type": "array", "minItems": 3, "maxItems": 3,
+          "prefixItems": [{ "const": 1 }, { "type": "integer", "minimum": 1 }, { "const": 6 }]
+        },
+        "dtype": { "const": "float32" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shape", "dtype", "activation"],
+      "properties": {
+        "shape": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "prefixItems": [{ "const": 1 }, { "const": 7 }]
+        },
+        "dtype": { "const": "float32" },
+        "activation": { "const": "softmax" }
+      }
+    },
+    "labels": {
+      "type": "array",
+      "minItems": 7, "maxItems": 7,
+      "prefixItems": [
+        { "const": "NULL" }, { "const": "PALM_TO_PALM" }, { "const": "BACK_OF_HAND" },
+        { "const": "INTERLACED_FINGERS" }, { "const": "THUMBS" }, { "const": "FINGERTIPS" },
+        { "const": "WASH_OTHER" }
+      ]
+    },
+    "postprocessing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["moving_average_k"],
+      "properties": { "moving_average_k": { "type": "integer", "minimum": 1 } }
+    },
+    "training": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["datasets", "loso_macro_f1", "loso_macro_f1_std", "commit"],
+      "properties": {
+        "datasets": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "loso_macro_f1": { "type": "number", "minimum": 0, "maximum": 1 },
+        "loso_macro_f1_std": { "type": "number", "minimum": 0, "maximum": 1 },
+        "commit": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
