@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "haptic-ai"
 version = "0.1.0"
-description = "Haptic gesture recognition with ML"
+description = "HapticWash model pipeline: data + step classifier + export"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "numpy",
@@ -14,7 +14,6 @@ dependencies = [
     "pyarrow",
     "scikit-learn",
     "imbalanced-learn",
-    "tensorflow==2.17.*",
     "matplotlib",
     "pyyaml",
     "pydantic",
@@ -22,5 +21,22 @@ dependencies = [
     "tqdm",
 ]
 
+[project.optional-dependencies]
+# Deep-learning / TFLite export stack. Framework choice is deferred to M2 (SPEC 2.2);
+# only the M0 stub model needs it before then. tensorflow-io-gcs-filesystem has no
+# Windows wheels, so this extra is Linux-only and model export runs on Linux/CI.
+ml = ["tensorflow==2.17.* ; sys_platform == 'linux'"]
+
 [dependency-groups]
-dev = ["pytest", "ruff", "jupyter"]
+dev = ["pytest", "ruff", "jupyter", "jsonschema"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

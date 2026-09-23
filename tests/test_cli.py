@@ -1,4 +1,5 @@
 """Test CLI."""
+
 from haptic_ai.cli import main
 
 

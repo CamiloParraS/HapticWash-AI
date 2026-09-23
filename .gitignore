@@ -34,3 +34,5 @@ htmlcov/
 *.tflite
 data/
 outputs/
+artifacts/
+.ruff_cache/

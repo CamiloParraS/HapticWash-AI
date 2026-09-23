@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+      - run: uv sync --all-extras
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Schema fixture
+        run: uv run python -m haptic_ai.cli validate-schema tests/fixtures/canonical_100rows.csv
+      - name: Build stub model (needs ml extra, Linux only)
+        run: uv run --extra ml python scripts/make_stub_model.py
+      - name: Tests
+        run: uv run pytest -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stub-model-v0.0.1
+          path: artifacts/

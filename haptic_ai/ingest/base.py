@@ -1,5 +1,7 @@
 """Base adapter for data ingestion."""
+
 from abc import ABC, abstractmethod
+
 import pandas as pd
 
 

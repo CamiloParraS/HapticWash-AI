@@ -1,5 +1,5 @@
 """Feature extraction (must mirror Kotlin exactly)."""
-import pandas as pd
+
 import numpy as np
 
 

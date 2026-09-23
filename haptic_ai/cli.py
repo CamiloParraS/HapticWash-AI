@@ -1,38 +1,49 @@
-"""CLI entrypoints."""
+"""CLI entrypoints. Only `validate-schema` is implemented at M0; the rest land later."""
+
 import argparse
 import sys
 
+from haptic_ai import schema
 
-def main():
+_LATER = {
+    "ingest": "M1",
+    "train": "M2",
+    "evaluate": "M2",
+    "export": "M2",
+    "golden": "M2",
+}
+
+
+def _validate_schema(args: argparse.Namespace) -> int:
+    try:
+        df = schema.read_canonical_csv(args.csv)
+    except (schema.SchemaError, ValueError, OSError) as e:
+        print(f"INVALID {args.csv}: {e}")
+        return 1
+    print(f"OK {args.csv}: {len(df)} rows, {df['subject_id'].nunique()} subjects")
+    return 0
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(prog="haptic-ai")
-    subparsers = parser.add_subparsers(dest="command", help="Command")
+    sub = parser.add_subparsers(dest="command")
 
-    # ingest --all
-    ingest_parser = subparsers.add_parser("ingest", help="Ingest datasets")
-    ingest_parser.add_argument("--all", action="store_true", help="Ingest all datasets")
+    p = sub.add_parser("validate-schema", help="Validate a canonical sensor CSV (SPEC 8.1)")
+    p.add_argument("csv", help="Path to a canonical CSV")
+    p.set_defaults(func=_validate_schema)
 
-    # train --config
-    train_parser = subparsers.add_parser("train", help="Train model")
-    train_parser.add_argument("--config", required=True, help="Config file")
-
-    # evaluate --config
-    eval_parser = subparsers.add_parser("evaluate", help="Evaluate model")
-    eval_parser.add_argument("--config", required=True, help="Config file")
-
-    # export --config
-    export_parser = subparsers.add_parser("export", help="Export to TFLite")
-    export_parser.add_argument("--config", required=True, help="Config file")
-
-    # golden --config
-    golden_parser = subparsers.add_parser("golden", help="Generate golden files")
-    golden_parser.add_argument("--config", required=True, help="Config file")
+    sub.add_parser("ingest").add_argument("--all", action="store_true")
+    for name in ("train", "evaluate", "export", "golden"):
+        sub.add_parser(name).add_argument("--config", required=True)
 
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
         return 1
-
-    return 0
+    if args.command in _LATER:
+        print(f"'{args.command}' is not implemented until {_LATER[args.command]}")
+        return 2
+    return args.func(args)
 
 
 if __name__ == "__main__":

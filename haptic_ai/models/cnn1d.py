@@ -1,6 +1,6 @@
 """1D CNN on raw windows."""
+
 import tensorflow as tf
-import numpy as np
 
 
 class CNN1D(tf.keras.Model):

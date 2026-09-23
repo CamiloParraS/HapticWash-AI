@@ -1,6 +1,8 @@
 """Adapter for Ablutomania dataset."""
-from .base import DatasetAdapter
+
 import pandas as pd
+
+from .base import DatasetAdapter
 
 
 class AblutomaniaAdapter(DatasetAdapter):
