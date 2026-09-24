@@ -11,7 +11,8 @@ that depends on the set is on hold (SPEC §11).
 
 | key | licence | verified | role |
 |---|---|---|---|
-| `zhang_who` | **CC-BY-NC-ND-4.0** | ✅ 2026-09-09 (RDR citation page) | Primary — only public WHO step labels |
+| `zhang_who` | **CC-BY-NC-ND-4.0** | ✅ 2026-09-09 (RDR citation page) | Primary — WHO step labels (10 subjects) |
+| `uwash` | MIT | ✅ 2026-09-24 (owner confirmed MIT covers the data) | Primary — WHO step labels (51 subjects, smartwatch) |
 | `ablutomania` | CC-BY-4.0 | ✅ 2026-09-22 (Zenodo record) | Hard negatives / confounders |
 | `ocdetect` | CC-BY-4.0 | ✅ 2026-09-22 (Zenodo record) | All-day background & NULL for spotting (M5) |
 | `harage` | none — not publicly released | ❌ | Supplementary handwashing — proposed drop |
@@ -19,8 +20,9 @@ that depends on the set is on hold (SPEC §11).
 ## ⚠️ Open licence blocker — `zhang_who`
 
 `zhang_who` is **CC-BY-NC-ND-4.0**: Attribution + **NonCommercial** + **NoDerivatives**.
-It is the *primary* dataset (the only public source with WHO step labels), so this
-blocks the project's end goal until resolved. Decision needed from the owner — see
+It is a *primary* dataset, so this blocks the project's end goal until resolved.
+`uwash` (D14, MIT) is now a second source of WHO step labels, so a model trained
+without `zhang_who` can sidestep this blocker. Decision needed from the owner — see
 `DECISIONS.md` D4. Two clauses to clear:
 
 - **NC** — fine while HapticWash is a non-commercial portfolio project; violated if it
@@ -65,6 +67,47 @@ recorded.
   wrist/sensor, columns `time,channel1,channel2,channel3` (`time` in seconds).
   Annotation in `8 ADLs shared in RDR/annotation.xlsx`, one sheet per participant, with
   wall-clock + epoch start/end per activity. Feeds NULL / confounders, not step training.
+
+## `uwash`
+
+- **Title:** UWash — "You Can Wash Hands Better: Accurate Daily Handwashing Assessment
+  with a Smartwatch"
+- **Authors:** Wang, F., Zhang, T., Wu, X., Wang, P., Wang, X., Ding, H., Shi, J., Han, J.,
+  Huang, D. (Xi'an Jiaotong University)
+- **Paper:** IEEE Transactions on Mobile Computing (2025); arXiv `2112.06657` (v5).
+  Local copy: `../Investigations/2112.06657v5.pdf`.
+- **Repository:** <https://github.com/aiotgroup/UWash> — code + link to the data.
+- **Download:** `Dataset_raw.zip` on Google Drive, file id
+  `1ZRdRiwXp4xbFUWIIjIQ0OEK6gK0cwODN` (`gdown <id>`). 26.4 MB,
+  MD5 `4088db4cdcb5f41b9951462d1d7a082f`,
+  SHA-256 `cacd690748d91ea1a45f6ae8456b785c38875b177d5990c52f5d280448be62f1`.
+- **Licence:** **MIT**, covering both code and data (repo checked 2026-09-23; the owner
+  confirmed on 2026-09-24 that MIT covers the data). The zip itself carries no licence
+  file.
+- **Citation:** Wang, F. et al. *You Can Wash Hands Better: Accurate Daily Handwashing
+  Assessment with a Smartwatch.* IEEE TMC (2025). arXiv:2112.06657.
+
+**Structure as downloaded** (`data/uwash/`), verified 2026-09-23:
+
+- 51 flat CSVs, **one per subject**: `{location}_{n}.csv` — `canteen` ×10,
+  `dormitory` ×10, `hanying` ×10, `hongli` ×11, `library` ×10. The location prefix is
+  the paper's five campus buildings, so leave-one-location-out splits are free.
+- Columns: `acc_x,acc_y,acc_z,gyr_x,gyr_y,gyr_z,timestamp,label`. Accelerometer is in
+  **m/s²** (median |acc| ≈ 10.2), the same as Android. Gyro range reaches ±600, which
+  suggests **°/s**, not Android's rad/s. Confirm this before converting at ingest.
+  `timestamp` is epoch ms.
+- Samsung Gear Sport (Tizen), **~50 Hz** (per-file median 49.9 Hz, native — no
+  resampling needed). Axis frame vs Android still to be checked (D10). The paper reports
+  that the x/y axes were swapped relative to an Apple Watch.
+- Each file holds about 5 washes (4–16 min per file; 1,025,402 rows in total). **9 files
+  have non-monotonic timestamps** (`canteen_{2,5,10}`, `dormitory_{2,4,9}`,
+  `hanying_5`, `hongli_10`, `library_4`), and gaps reach ~480 ms. Ingest must sort or
+  split these, not assume a uniform grid.
+- `label` is per sample, 0–9 (from the paper's Fig. 1 and the label counts):
+  0 = everything outside the nine gestures (45 % of samples); 1 palm to palm;
+  2 / 3 back of hand (R over L / L over R); 4 palm to palm, fingers interlaced;
+  5 backs of fingers to opposing palms, interlocked; 6 / 7 thumbs (L / R);
+  8 / 9 fingertips in palm (L / R). Provisional canonical mapping in `DECISIONS.md` D14.
 
 ## `ablutomania`
 

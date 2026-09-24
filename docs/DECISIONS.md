@@ -159,3 +159,63 @@ undefined:
 `spec_version` stays `1.0`: no release carrying the old contract has been published
 (`v0.0.1-stub` is still unreleased), so there is nothing to be incompatible with. After
 the first release, contract changes bump it.
+
+## D13 — 2026-09-23 — Spec split into core / AI / app
+
+`docs/HapticWash-SPEC.md` now holds only the shared contracts (§1, §2.3, §3 boundary,
+§4.3, M0, M6, §7, §8.1–8.3, §8.7, §9.1–9.2, §10–12). AI-only sections moved to
+`docs/SPEC-AI.md`; app-only sections to `HapticWash - Main/docs/SPEC-APP.md`.
+
+- **§ numbers are unchanged and global**, so existing `SPEC x.y` references in code and in
+  D1–D12 still resolve; the core spec's section index maps each § to its file.
+- M5 split into **M5-AI** (spotting model, `ocdetect` ingest) and **M5-App** (gating,
+  duty-cycling, toggle). Content unchanged.
+- M2 gains an explicit deliverable: export `golden/*.npy` with the release. §9.2 already
+  required it; M2 just didn't list it.
+- The app links to the core spec instead of keeping a copy (old §3 "symlink or copy").
+
+## D14 — 2026-09-23 — Add `uwash` to the M1 corpus as a second primary step source
+
+Found via the UWash paper (Wang et al., IEEE TMC 2025, arXiv `2112.06657`). It is the
+largest public source of WHO step labels: **51 subjects at 5 locations**, recorded at
+50 Hz on a real wrist smartwatch (Samsung Gear Sport), with **per-sample** labels. It has
+5× the subjects of `zhang_who` and is closer to the Wear OS domain. Downloaded and
+checksummed. Provenance, file format and quirks are in `docs/DATASETS.md`.
+
+- **Corpus:** M1 = `zhang_who` + `uwash` + `ablutomania` (amends D8). `uwash` needs no
+  resampling.
+- **D9 superseded in part:** labelled subjects go from 10 to 61, so LOSO is no longer
+  thin. Hand-annotating `ablutomania` drops from "highest-value data work" to unneeded
+  unless M2 shows a gap. The per-fold report stays.
+- **D10:** `uwash` narrows the sensor gap (a real watch at 50 Hz) but doesn't close it
+  (Tizen, not Wear OS). It needs its own row in the axis-frame table. Gyro units look
+  like °/s (Android uses rad/s); confirm this at ingest.
+- **D4:** MIT covers the data (owner confirmed 2026-09-24), so a model trained without
+  `zhang_who` avoids the CC-BY-NC-ND question entirely.
+- **Split:** LOSO over the labelled subjects. `uwash` subject ids follow the schema rule
+  `<key>_<local_id>`: `uwash_canteen_3`. The location prefix also allows a
+  leave-one-location-out check.
+
+Provisional label mapping (finalised in `docs/label_mapping.md` at M1, consistent with
+D5):
+
+| uwash `label` | gesture | canonical §1.3 |
+|---|---|---|
+| 1 | palm to palm | `PALM_TO_PALM` (1) |
+| 2, 3 | back of hand (R over L / L over R) | `BACK_OF_HAND` (2) |
+| 4 | palm to palm, fingers interlaced | `INTERLACED_FINGERS` (3) |
+| 5 | backs of fingers, interlocked | `WASH_OTHER` (6) — same as `zhang_who` Action 4 (D5) |
+| 6, 7 | thumbs (L / R) | `THUMBS` (4) |
+| 8, 9 | fingertips (L / R) | `FINGERTIPS` (5) |
+| 0 | everything else | `NULL` (0); edge zone → `-1` (see below) |
+
+**Label 0 (corrected 2026-09-24).** Measured on the data: *inside* a wash the nine
+gestures are contiguous. Label-0 runs between gestures are 12–40 s (median 18 s, 271 runs
+≈ 5 per file); these are the gaps *between* washes. So label 0 is walking plus wetting,
+soaping, rinsing and drying, with no boundary between them. Relabelling it
+`WASH_OTHER` would teach the model that walking is washing.
+Rule: label 0 → `NULL`, except the **edge zone** (N s immediately before the first
+gesture and after the last gesture of each wash), which is set to `UNLABELLED` (`-1`)
+and excluded. That way wet/soap/rinse is never trained as `NULL`, which would conflict
+with `zhang_who`'s `WASH_OTHER` (D5). Start with N = 5 s. It is a tuning knob: check it
+against the M1 plots.

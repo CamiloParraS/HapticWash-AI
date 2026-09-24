@@ -28,6 +28,7 @@ NOMINAL_RATE_HZ = 50
 # --- Dataset keys (SPEC 5). subject_id must be "<key>_<local_id>". ---
 DATASET_KEYS: tuple[str, ...] = (
     "zhang_who",
+    "uwash",
     "ablutomania",
     "ocdetect",
     "harage",
