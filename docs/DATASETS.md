@@ -9,13 +9,13 @@ permits this project's use (non-commercial research, on-device model trained fro
 no redistribution of raw data). Until every row below is verified, downstream work
 that depends on the set is on hold (SPEC §11).
 
-| key | licence | verified | role |
-|---|---|---|---|
-| `zhang_who` | **CC-BY-NC-ND-4.0** | ✅ 2026-09-09 (RDR citation page) | External test set only — WHO step labels (10 subjects) |
-| `uwash` | MIT | ✅ 2026-09-24 (owner confirmed MIT covers the data) | Training — WHO step labels (51 subjects, smartwatch) |
-| `ablutomania` | CC-BY-4.0 | ✅ 2026-09-22 (Zenodo record) | Hard negatives / confounders |
-| `ocdetect` | CC-BY-4.0 | ✅ 2026-09-22 (Zenodo record) | All-day background & NULL for spotting (M5) |
-| `harage` | none — not publicly released | ❌ | Dropped (D7) |
+| key           | licence                      | verified                                            | role                                                   |
+| ------------- | ---------------------------- | --------------------------------------------------- | ------------------------------------------------------ |
+| `zhang_who`   | **CC-BY-NC-ND-4.0**          | ✅ 2026-09-09 (RDR citation page)                   | External test set only — WHO step labels (10 subjects) |
+| `uwash`       | MIT                          | ✅ 2026-09-24 (owner confirmed MIT covers the data) | Training — WHO step labels (51 subjects, smartwatch)   |
+| `ablutomania` | CC-BY-4.0                    | ✅ 2026-09-22 (Zenodo record)                       | Hard negatives / confounders                           |
+| `ocdetect`    | CC-BY-4.0                    | ✅ 2026-09-22 (Zenodo record)                       | All-day background & NULL for spotting (M5)            |
+| `harage`      | none — not publicly released | ❌                                                  | Dropped (D7)                                           |
 
 ## `zhang_who` licence — resolved (D15)
 
@@ -34,9 +34,9 @@ NoDerivatives question. NonCommercial still holds. The processed corpus
 - **Repository:** KU Leuven RDR — <https://rdr.kuleuven.be/citation?persistentId=doi:10.48804/XHPPC7>
 - **DOI:** `10.48804/XHPPC7`
 - **Licence:** CC-BY-NC-ND-4.0
-- **Citation:** Zhang, Y. (2022). *Replication Data for: handwashing steps with IMU
-  signals* (V1.0) [Data set]. KU Leuven RDR. https://doi.org/10.48804/XHPPC7
-- **Companion paper:** Zhang et al., *IET Healthcare Technology Letters*,
+- **Citation:** Zhang, Y. (2022). _Replication Data for: handwashing steps with IMU
+  signals_ (V1.0) [Data set]. KU Leuven RDR. https://doi.org/10.48804/XHPPC7
+- **Companion paper:** Zhang et al., _IET Healthcare Technology Letters_,
   doi `10.1049/htl2.12018` — detailed data description.
 
 **Structure as downloaded** (`data/zhang-who/`):
@@ -45,14 +45,14 @@ NoDerivatives question. NonCommercial still holds. The processed corpus
   washes. 2 Byteflies sensors (ACC + GYR), **100 Hz**, both wrists. Signals are raw
   integer counts, one file per axis (`RAW/ACM_{X,Y,Z}_{L,R}<n>.csv`,
   `GRAW/GYR_..._<n>.csv`), 2-line header (`#Epoch Timestamp`, `#Sampling Rate`).
-  Scaling: `ACC_g = raw / 4096`, `GYR_dps = raw / 16.384`. Files `1–3` = participant 1,
+  Scaling: `ACC_g = raw / 4096`, `GYR_dps = raw / 131` (readme says 16.384; D17). Files `1–3` = participant 1,
   `4–6` = participant 2, … `28–30` = participant 10.
   Per-step annotation in `FRAME/FrameACM_<k>.xls` (k = 1..30), columns
   `Action | Start time | # | End time | #`, where `#` is the sample index (centiseconds
   from `#Epoch Timestamp`). `Action` codes: `0, 0.5, 1, 2.1, 2.2, 3, 4, 5.1, 5.2, 6.1,
   6.2, 7` — finer than canonical §1.3, collapsed by `docs/label_mapping.md` (M1).
 - **PART 2 — "8 ADLs"**: 8 participants. ADLs (sitting, typing, standing, walking,
-  stairs, teeth) + *untrained* handwashing ×3 (no step breakdown). One CSV per
+  stairs, teeth) + _untrained_ handwashing ×3 (no step breakdown). One CSV per
   wrist/sensor, columns `time,channel1,channel2,channel3` (`time` in seconds).
   Annotation in `8 ADLs shared in RDR/annotation.xlsx`, one sheet per participant, with
   wall-clock + epoch start/end per activity. Feeds NULL / confounders, not step training.
@@ -73,8 +73,8 @@ NoDerivatives question. NonCommercial still holds. The processed corpus
 - **Licence:** **MIT**, covering both code and data (repo checked 2026-09-23; the owner
   confirmed on 2026-09-24 that MIT covers the data). The zip itself carries no licence
   file.
-- **Citation:** Wang, F. et al. *You Can Wash Hands Better: Accurate Daily Handwashing
-  Assessment with a Smartwatch.* IEEE TMC (2025). arXiv:2112.06657.
+- **Citation:** Wang, F. et al. _You Can Wash Hands Better: Accurate Daily Handwashing
+  Assessment with a Smartwatch._ IEEE TMC (2025). arXiv:2112.06657.
 
 **Structure as downloaded** (`data/uwash/`), verified 2026-09-23:
 
@@ -109,7 +109,7 @@ NoDerivatives question. NonCommercial still holds. The processed corpus
 - **Files:** 40.6 GB total. Only `handwashing-2019.zip` (2.5 GB), `handwashing-2020.zip`
   (1.6 GB), `hwseminar-2019.zip` (286 MB) and the readme are needed for M1;
   `longterm-2020.zip` (35.7 GB) is all-day data — skip until M5.
-- **Citation:** Scholl, P. M., Wahl, K. et al. *Ablutomania-Set* [Data set]. Zenodo.
+- **Citation:** Scholl, P. M., Wahl, K. et al. _Ablutomania-Set_ [Data set]. Zenodo.
   https://doi.org/10.5281/zenodo.20094015
 
 ## `ocdetect`
@@ -122,19 +122,19 @@ NoDerivatives question. NonCommercial still holds. The processed corpus
   Only needed for M5 — don't download for M1.
 - **Labels:** each wash labelled routine vs. compulsive; no WHO step labels.
 - **Citation:** Burchard, R., Kirsten, K., Miché, M., Scholl, P., Arnrich, B.,
-  Van Laerhoven, K., Lieb, R., Wahl, K. *A Real-World Dataset for detecting Handwashing in
-  daily Life using Wrist Motion Data from Wearables.* Scientific Data (2026).
+  Van Laerhoven, K., Lieb, R., Wahl, K. _A Real-World Dataset for detecting Handwashing in
+  daily Life using Wrist Motion Data from Wearables._ Scientific Data (2026).
   https://www.nature.com/articles/s41597-026-06698-2 · data DOI `10.5281/zenodo.13924901`
 
 ## `harage`
 
 - **Source:** harAGE — Mallol-Ragolta, A., Semertzidou, A., Pateraki, M., Schuller, B.
-  *harAGE: A Novel Multimodal Smartwatch-based Dataset for Human Activity Recognition*,
+  _harAGE: A Novel Multimodal Smartwatch-based Dataset for Human Activity Recognition_,
   IEEE FG 2021. ~53 min handwashing, 18 participants.
 - **Licence:** none — **no public download.** The paper says data is "available by the
   authors" on request.
 - **Why drop:** accelerometer only at 25 Hz (no gyro → can't fill `gx,gy,gz` in §8.1),
-  no step labels, and hands were washed *without running water*. Adds little. Only worth
+  no step labels, and hands were washed _without running water_. Adds little. Only worth
   an email to the authors if M2 is short of subjects.
 
 ## `own_phone` / `own_watch`

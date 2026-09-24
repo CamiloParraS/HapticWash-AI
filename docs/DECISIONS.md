@@ -231,3 +231,68 @@ against the M1 plots.
   question in D4 no longer applies. NC still holds: evaluation stays non-commercial.
 - **`ablutomania`:** it has no step labels, so it can't train or test the step classifier.
   Its roles are confounders and NULL, which only the spotting model needs.
+
+## D16 — 2026-09-24 — M1 corpus build choices
+
+- **Dependencies:** `xlrd` (zhang_who `FrameACM_*.xls` is BIFF) and `openpyxl`
+  (`FrameACM_30.xls` is actually xlsx; PART 2 `annotation.xlsx`). Both pure Python.
+- **The corpus stays raw.** §8.1 says acc includes gravity, so `data/processed/` holds
+  only resample + units + gap splits. Gravity-align, bandpass and mirroring live in
+  `haptic_ai/preprocess.py` as per-session array functions, and M2 applies them to each
+  continuous session before windowing (§8.7).
+- **Gap split:** any gap > 100 ms starts a new session `<session>_t<ms>` (see D18), and time restarts
+  at 0. Applied to every dataset. `uwash` is not re-gridded (D14), so its jitter goes
+  straight to M2: dt p1 / p99 = 1 / 34 ms.
+- **zhang_who unannotated samples → `-1`**, not `NULL`: before, between and after steps
+  the subject is at the sink.
+- **Gravity-align singularity:** when gravity is exactly −z, use a 180° rotation about x.
+  The Kotlin side must do the same (§9.2).
+- **`ablutomania` deferred:** not downloaded, no step labels (D15), not used by M2. M1 ships
+  `zhang_who` + `uwash`. The adapter lands when the files are fetched, at the latest
+  with M5.
+- Known data issues (zhang gyro X clipping, uwash jitter) are in `docs/label_mapping.md`.
+
+## D17 — 2026-09-24 — `zhang_who` gyro scale is 131 LSB/(°/s), not the readme's 16.384
+
+The readme's 16.384 (±2000 °/s) made zhang gyro 3.5–8× uwash during the same steps, with
+|gyro| held near 38 rad/s for seconds. The raw data clips at int16 full scale, so the
+scale sets the range. Two checks point to ±250 °/s (131, an 8× smaller value):
+
+- **Gravity rotation:** the rate the gravity direction turns in acc, fitted against gyro,
+  gives scale factors of 0.07–0.14 with 16.384 (≈ 1/8). uwash gives 0.93.
+- **Clipping rate:** 1.7 % of zhang per-axis samples sit at ±32767. uwash exceeds 250 °/s
+  on 2.9 % and 500 °/s on 0.6 %. A ±250 °/s range matches; ±500 °/s (65.5) would clip
+  about 3× less than observed.
+
+Acc stays at 4096 LSB/g (±8 g). The clipped samples are kept (`docs/label_mapping.md`).
+
+## D18 — 2026-09-24 — M1 review fixes: uwash re-grid and shared files, zhang wet/soap/rinse
+
+From the human review of the M1 plots.
+
+- **uwash re-gridded to 50 Hz, dropouts ≤ 200 ms interpolated.** The raw timestamps are
+  jittery (dt p1 = 1 ms) and have 2,125 gaps over 100 ms. They are real dropouts, not
+  batching: after a 100–150 ms gap the next second holds ~46 samples, not 50. Splitting at
+  every one gave 2,176 sessions with a median of 2.9 s, shorter than the M2 windows
+  (2–5 s). Now each file is linearly interpolated onto a 20 ms grid, bridging gaps up to
+  200 ms (≤ 9 missing samples, ~70 % of the gaps). Longer gaps get no grid points, so the
+  100 ms session split still applies. **Amends the SPEC M1 "gaps are never interpolated"
+  criterion** for gaps of 100–200 ms. `MAX_BRIDGE_MS` is the knob.
+- **uwash `library_6`/`library_7` and `library_9`/`library_10` share one recording.**
+  Same sensor data and timestamps. Only the labels differ, and each file labels only its
+  own subject's washes, so the other subject's washes read as label 0 (→ `NULL`). That
+  poisoned `NULL` and put the same samples in two LOSO folds. Each file is cropped to its
+  own half, cut midway between the two subjects' washes (431 s and 381 s).
+- **zhang Action 0, 0.5, 7 (wet, soap, rinse) → `-1`** (amends D5). uwash label 0 doesn't
+  separate these from walking, and its edge zone (D14) makes them `-1`. Keeping them
+  `WASH_OTHER` in zhang would test the model on a class meaning it never trained on.
+  `WASH_OTHER` is now backs of fingers only, in both datasets.
+- **zhang washes end at the last annotated sample.** Wash 16's right wrist ran 96 s past
+  the rinse (166.7 s against 70.5 s on the left).
+- Report plots four sessions per dataset so zhang gets both wrists.
+- **One split number per dataset.** zhang splits at gaps > 100 ms (it has none). uwash
+  bridges gaps ≤ 200 ms at ingest, so no gap of 100–200 ms survives and its effective
+  split threshold is **200 ms**.
+- **Session ids are `<session>_t<ms>`**, the piece's start offset in the source recording,
+  not a running `_s<k>` count. A count renumbers every later piece whenever an earlier gap
+  changes, so reviewers could not track a session across runs.
