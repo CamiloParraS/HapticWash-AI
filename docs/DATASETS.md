@@ -11,29 +11,18 @@ that depends on the set is on hold (SPEC §11).
 
 | key | licence | verified | role |
 |---|---|---|---|
-| `zhang_who` | **CC-BY-NC-ND-4.0** | ✅ 2026-09-09 (RDR citation page) | Primary — WHO step labels (10 subjects) |
-| `uwash` | MIT | ✅ 2026-09-24 (owner confirmed MIT covers the data) | Primary — WHO step labels (51 subjects, smartwatch) |
+| `zhang_who` | **CC-BY-NC-ND-4.0** | ✅ 2026-09-09 (RDR citation page) | External test set only — WHO step labels (10 subjects) |
+| `uwash` | MIT | ✅ 2026-09-24 (owner confirmed MIT covers the data) | Training — WHO step labels (51 subjects, smartwatch) |
 | `ablutomania` | CC-BY-4.0 | ✅ 2026-09-22 (Zenodo record) | Hard negatives / confounders |
 | `ocdetect` | CC-BY-4.0 | ✅ 2026-09-22 (Zenodo record) | All-day background & NULL for spotting (M5) |
 | `harage` | none — not publicly released | ❌ | Supplementary handwashing — proposed drop |
 
-## ⚠️ Open licence blocker — `zhang_who`
+## `zhang_who` licence — resolved (D15)
 
-`zhang_who` is **CC-BY-NC-ND-4.0**: Attribution + **NonCommercial** + **NoDerivatives**.
-It is a *primary* dataset, so this blocks the project's end goal until resolved.
-`uwash` (D14, MIT) is now a second source of WHO step labels, so a model trained
-without `zhang_who` can sidestep this blocker. Decision needed from the owner — see
-`DECISIONS.md` D4. Two clauses to clear:
-
-- **NC** — fine while HapticWash is a non-commercial portfolio project; violated if it
-  ships as a paid/monetised app.
-- **ND** — ambiguous for ML. Training model weights from the data is arguably not a
-  "derivative" in copyright terms, but CC's ND clause has no ML carve-out. The
-  processed corpus (`data/processed/`) is a derivative and must **not** be
-  redistributed (the SPEC already forbids this).
-
-Do not start M2 modelling that depends on `zhang_who` until this is decided and
-recorded.
+`zhang_who` is **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0**. It is
+used for **evaluation only**: no shipped model is trained on it, which avoids the
+NoDerivatives question. NonCommercial still holds. The processed corpus
+(`data/processed/`) is a derivative and is never redistributed.
 
 ---
 

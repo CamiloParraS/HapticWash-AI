@@ -219,3 +219,15 @@ gesture and after the last gesture of each wash), which is set to `UNLABELLED` (
 and excluded. That way wet/soap/rinse is never trained as `NULL`, which would conflict
 with `zhang_who`'s `WASH_OTHER` (D5). Start with N = 5 s. It is a tuning knob: check it
 against the M1 plots.
+
+## D15 — 2026-09-24 — Train on `uwash`, test on `zhang_who` (closes D4)
+
+- **Train:** `uwash` only, leave-one-subject-out: each fold trains on 50 subjects and
+  tests on the one left out, rotated over all 51. Mean ± std and every fold are reported.
+- **External test:** `zhang_who` (all 10 subjects) is never used for training or model
+  selection. It is a cross-device check: Byteflies at 100 Hz vs the Gear Sport at 50 Hz (D10).
+- **Licence:** `zhang_who` is Creative Commons Attribution-NonCommercial-NoDerivatives 4.0.
+  Using it for evaluation only means no shipped weights are trained on it, so the ND
+  question in D4 no longer applies. NC still holds: evaluation stays non-commercial.
+- **`ablutomania`:** it has no step labels, so it can't train or test the step classifier.
+  Its roles are confounders and NULL, which only the spotting model needs.
