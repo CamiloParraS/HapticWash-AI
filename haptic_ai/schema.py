@@ -26,12 +26,14 @@ UNLABELLED = -1
 NOMINAL_RATE_HZ = 50
 
 # --- Dataset keys (SPEC 5). subject_id must be "<key>_<local_id>". ---
+# Changelog:
+#   2026-09-23  removed "harage": no public download, acc-only at 25 Hz (DECISIONS D7).
+#   2026-09-24  added "uwash" (DECISIONS D14).
 DATASET_KEYS: tuple[str, ...] = (
     "zhang_who",
     "uwash",
     "ablutomania",
     "ocdetect",
-    "harage",
     "own_phone",
     "own_watch",
 )

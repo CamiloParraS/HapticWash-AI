@@ -15,7 +15,7 @@ that depends on the set is on hold (SPEC §11).
 | `uwash` | MIT | ✅ 2026-09-24 (owner confirmed MIT covers the data) | Training — WHO step labels (51 subjects, smartwatch) |
 | `ablutomania` | CC-BY-4.0 | ✅ 2026-09-22 (Zenodo record) | Hard negatives / confounders |
 | `ocdetect` | CC-BY-4.0 | ✅ 2026-09-22 (Zenodo record) | All-day background & NULL for spotting (M5) |
-| `harage` | none — not publicly released | ❌ | Supplementary handwashing — proposed drop |
+| `harage` | none — not publicly released | ❌ | Dropped (D7) |
 
 ## `zhang_who` licence — resolved (D15)
 
@@ -90,8 +90,8 @@ NoDerivatives question. NonCommercial still holds. The processed corpus
   that the x/y axes were swapped relative to an Apple Watch.
 - Each file holds about 5 washes (4–16 min per file; 1,025,402 rows in total). **9 files
   have non-monotonic timestamps** (`canteen_{2,5,10}`, `dormitory_{2,4,9}`,
-  `hanying_5`, `hongli_10`, `library_4`), and gaps reach ~480 ms. Ingest must sort or
-  split these, not assume a uniform grid.
+  `hanying_5`, `hongli_10`, `library_4`), 16,236 rows repeat a timestamp, and gaps
+  reach ~2.8 s. The adapter sorts and drops repeats; preprocessing splits at gaps.
 - `label` is per sample, 0–9 (from the paper's Fig. 1 and the label counts):
   0 = everything outside the nine gestures (45 % of samples); 1 palm to palm;
   2 / 3 back of hand (R over L / L over R); 4 palm to palm, fingers interlaced;
