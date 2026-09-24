@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from haptic_ai.ingest.uwash import load_file
+from haptic_ai.ingest.uwash import load_file, regrid
 
 HEADER = ["acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "timestamp", "label"]
 
@@ -26,3 +26,11 @@ def test_load_file(tmp_path):
     assert set(df["label"].iloc[:249]) == {0}
     assert set(df["label"].iloc[251:500]) == {-1}
     assert set(df["label"].iloc[500:]) == {2}
+
+
+def test_regrid():
+    # Jittered 50 Hz with a 150 ms dropout (bridged) and a 1 s gap (kept).
+    t = np.r_[0, 21, 39, 60, 210, 230, 1230, 1250.0]
+    g, x = regrid(t, t[:, None] * 2)
+    assert g.tolist() == [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 1230, 1250]
+    assert np.allclose(x[:, 0], g * 2)  # linear signal survives interpolation
