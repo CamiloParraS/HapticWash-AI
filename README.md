@@ -1,8 +1,15 @@
 # HapticWash-AI
 
+> **This is the AI repo** (Python, never runs on the watch). The Wear OS app lives in the
+> separate **`HapticWash - Main`** repo and consumes this repo's release artifacts
+> (`model.tflite` + `model_meta.json` + `golden/*.npy`).
+>
+> - AI spec: [`docs/SPEC-AI.md`](docs/SPEC-AI.md)
+> - Shared contracts (core spec): [`docs/HapticWash-SPEC.md`](docs/HapticWash-SPEC.md)
+
 Data + model pipeline for HapticWash: turn public handwashing IMU datasets into one
 canonical corpus, train a WHO-step classifier, and export a quantized LiteRT model for
-the Wear OS app. Spec: [`docs/HapticWash-SPEC.md`](docs/HapticWash-SPEC.md).
+the Wear OS app.
 
 ## Setup
 
@@ -24,6 +31,9 @@ Not redistributed. `data/` is gitignored; licences and citations in
 
 - **zhang_who** — Zhang, Y. (2022). *Replication Data for: handwashing steps with IMU
   signals* (V1.0). KU Leuven RDR. https://doi.org/10.48804/XHPPC7
+- **uwash** — Wang, F. et al. (2025). *You Can Wash Hands Better: Accurate Daily
+  Handwashing Assessment with a Smartwatch.* IEEE TMC. arXiv:2112.06657.
+  https://github.com/aiotgroup/UWash
 - **ablutomania** — Scholl, P. & Wahl, F. (2021). Ablutomania-Set.
 - **ocdetect** — OCDetect, Zenodo record 13924901.
 - **harage** — Mallol-Ragolta, A. et al. harAGE.
