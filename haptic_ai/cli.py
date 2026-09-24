@@ -1,4 +1,4 @@
-"""CLI entrypoints. Only `validate-schema` is implemented at M0; the rest land later."""
+"""CLI entrypoints. Model commands land at M2."""
 
 import argparse
 import sys
@@ -6,7 +6,6 @@ import sys
 from haptic_ai import schema
 
 _LATER = {
-    "ingest": "M1",
     "train": "M2",
     "evaluate": "M2",
     "export": "M2",
@@ -24,6 +23,22 @@ def _validate_schema(args: argparse.Namespace) -> int:
     return 0
 
 
+def _ingest(args: argparse.Namespace) -> int:
+    from haptic_ai import corpus
+
+    df = corpus.build()
+    print(f"OK {corpus.PROCESSED}: {len(df)} rows, {df['subject_id'].nunique()} subjects")
+    return 0
+
+
+def _report_corpus(args: argparse.Namespace) -> int:
+    from haptic_ai import corpus
+
+    s = corpus.report(corpus.load())
+    print(f"OK {corpus.REPORTS / 'M1_corpus.md'}: {s['rows']} rows, {s['subjects']} subjects")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="haptic-ai")
     sub = parser.add_subparsers(dest="command")
@@ -32,7 +47,11 @@ def main() -> int:
     p.add_argument("csv", help="Path to a canonical CSV")
     p.set_defaults(func=_validate_schema)
 
-    sub.add_parser("ingest").add_argument("--all", action="store_true")
+    p = sub.add_parser("ingest", help="Build the M1 corpus in data/processed/")
+    p.add_argument("--all", action="store_true", help="all M1 datasets (the only mode)")
+    p.set_defaults(func=_ingest)
+    p = sub.add_parser("report-corpus", help="Write reports/M1_corpus.{json,md}")
+    p.set_defaults(func=_report_corpus)
     for name in ("train", "evaluate", "export", "golden"):
         sub.add_parser(name).add_argument("--config", required=True)
 
