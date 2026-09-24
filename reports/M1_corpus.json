@@ -1,0 +1,133 @@
+{
+  "rows": 1152993,
+  "subjects": 61,
+  "datasets": {
+    "uwash": {
+      "rows": 925799,
+      "subjects": 51,
+      "sessions": 653,
+      "gap_breaks": 602,
+      "session_s": {
+        "min": 0.02,
+        "median": 6.64,
+        "max": 449.5
+      },
+      "per_subject_rows": {
+        "uwash_canteen_1": 19340,
+        "uwash_canteen_10": 15790,
+        "uwash_canteen_2": 22617,
+        "uwash_canteen_3": 19572,
+        "uwash_canteen_4": 15755,
+        "uwash_canteen_5": 17816,
+        "uwash_canteen_6": 23215,
+        "uwash_canteen_7": 14184,
+        "uwash_canteen_8": 17629,
+        "uwash_canteen_9": 14399,
+        "uwash_dormitory_1": 17162,
+        "uwash_dormitory_10": 15844,
+        "uwash_dormitory_2": 16845,
+        "uwash_dormitory_3": 18427,
+        "uwash_dormitory_4": 15104,
+        "uwash_dormitory_5": 16413,
+        "uwash_dormitory_6": 18136,
+        "uwash_dormitory_7": 16116,
+        "uwash_dormitory_8": 15134,
+        "uwash_dormitory_9": 16129,
+        "uwash_hanying_1": 16933,
+        "uwash_hanying_10": 20491,
+        "uwash_hanying_2": 18659,
+        "uwash_hanying_3": 18900,
+        "uwash_hanying_4": 20023,
+        "uwash_hanying_5": 18338,
+        "uwash_hanying_6": 17424,
+        "uwash_hanying_7": 17081,
+        "uwash_hanying_8": 15810,
+        "uwash_hanying_9": 20013,
+        "uwash_hongli_1": 21516,
+        "uwash_hongli_10": 21134,
+        "uwash_hongli_11": 18116,
+        "uwash_hongli_2": 17253,
+        "uwash_hongli_3": 17553,
+        "uwash_hongli_4": 16908,
+        "uwash_hongli_5": 13329,
+        "uwash_hongli_6": 16926,
+        "uwash_hongli_7": 12633,
+        "uwash_hongli_8": 13279,
+        "uwash_hongli_9": 20477,
+        "uwash_library_1": 17842,
+        "uwash_library_10": 22267,
+        "uwash_library_2": 22962,
+        "uwash_library_3": 17440,
+        "uwash_library_4": 21268,
+        "uwash_library_5": 21393,
+        "uwash_library_6": 21380,
+        "uwash_library_7": 27247,
+        "uwash_library_8": 16528,
+        "uwash_library_9": 19049
+      },
+      "label_duration_s": {
+        "UNLABELLED": 2752.64,
+        "NULL": 4593.6,
+        "PALM_TO_PALM": 1485.64,
+        "BACK_OF_HAND": 2550.04,
+        "INTERLACED_FINGERS": 1382.08,
+        "THUMBS": 2269.42,
+        "FINGERTIPS": 2229.02,
+        "WASH_OTHER": 1253.54
+      },
+      "wrist_rows": {
+        "unknown": 925799
+      },
+      "dt_ms": {
+        "median": 20.0,
+        "std": 0.0,
+        "p1": 20.0,
+        "p99": 20.0,
+        "max": 20.0
+      }
+    },
+    "zhang_who": {
+      "rows": 227194,
+      "subjects": 10,
+      "sessions": 60,
+      "gap_breaks": 0,
+      "session_s": {
+        "min": 65.18,
+        "median": 74.15,
+        "max": 89.18
+      },
+      "per_subject_rows": {
+        "zhang_who_1": 22632,
+        "zhang_who_10": 25618,
+        "zhang_who_2": 25892,
+        "zhang_who_3": 21010,
+        "zhang_who_4": 20384,
+        "zhang_who_5": 23124,
+        "zhang_who_6": 20070,
+        "zhang_who_7": 20414,
+        "zhang_who_8": 24160,
+        "zhang_who_9": 23890
+      },
+      "label_duration_s": {
+        "UNLABELLED": 1634.92,
+        "PALM_TO_PALM": 502.96,
+        "BACK_OF_HAND": 453.72,
+        "INTERLACED_FINGERS": 494.92,
+        "THUMBS": 486.84,
+        "FINGERTIPS": 471.24,
+        "WASH_OTHER": 499.28
+      },
+      "wrist_rows": {
+        "left": 113597,
+        "right": 113597
+      },
+      "dt_ms": {
+        "median": 20.0,
+        "std": 0.0,
+        "p1": 20.0,
+        "p99": 20.0,
+        "max": 20.0
+      }
+    }
+  }
+}

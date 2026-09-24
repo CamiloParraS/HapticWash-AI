@@ -1,4 +1,4 @@
-.PHONY: lint test validate-schema stub-model ingest train-step eval-step export golden
+.PHONY: lint test validate-schema stub-model ingest report-corpus train-step eval-step export golden
 
 lint:
 	uv run ruff check .
@@ -15,6 +15,9 @@ stub-model:
 
 ingest:
 	uv run python -m haptic_ai.cli ingest --all
+
+report-corpus:
+	uv run python -m haptic_ai.cli report-corpus
 
 train-step:
 	uv run python -m haptic_ai.cli train --config configs/step_cnn.yaml
