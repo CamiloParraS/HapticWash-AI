@@ -36,3 +36,5 @@ data/
 outputs/
 artifacts/
 .ruff_cache/
+investigation.md
+reports/figures/
