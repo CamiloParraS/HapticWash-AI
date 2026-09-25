@@ -2,5 +2,5 @@
 seed: 0
 window_sizes_s: [2.0, 3.0, 5.0]   # SPEC M2 sweep
 overlap: 0.5
-moving_average_k: 5               # SPEC M2 causal post-processing
+moving_average_s: [2.0, 3.0]      # causal smoothing, in seconds (D21)
 models: [dummy, rf, gb]

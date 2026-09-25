@@ -63,18 +63,34 @@ def _predict(model, f_train, y_train, f_test) -> np.ndarray:
     return proba
 
 
-def _score(y, proba, sessions, subjects, k) -> dict:
-    """Per-subject macro-F1 raw and smoothed, per-class F1, and summed confusion matrix."""
+def learner(name: str, cfg: dict, seed: int):
+    """``fit_predict(x_train, y_train, x_test) -> proba``. Trees take features, CNNs windows."""
+    if name.startswith("cnn"):
+        from haptic_ai.models import cnn1d  # TF is Linux-only (D2)
+
+        aug = cfg["augment"] if name == "cnn_aug" else None
+        return lambda a, b, c: cnn1d.fit_predict(a, b, c, cfg["cnn"], aug, seed)
+    return lambda a, b, c: _predict(tree.make(name, seed), a, b, c)
+
+
+def smoothing_ks(seconds: list[float], stride_s: float) -> dict[str, int]:
+    """Causal moving average set in seconds, as a window count at this stride (D21)."""
+    return {"raw": 1} | {f"ma_{s:g}s": max(1, round(s / stride_s)) for s in seconds}
+
+
+def _score(y, proba, sessions, subjects, ks: dict[str, int]) -> dict:
+    """Per smoothing: per-subject macro-F1, per-class F1, and summed confusion matrix."""
     out = {}
-    for tag, p in (("raw", proba), ("smoothed", moving_average(proba, sessions, k))):
-        m = y != UNLABELLED
-        pred = p.argmax(1)
+    m = y != UNLABELLED
+    for tag, k in ks.items():
+        pred = moving_average(proba, sessions, k).argmax(1)
         per_subject = {
             s: macro_f1(y[m & (subjects == s)], pred[m & (subjects == s)])
             for s in sorted(set(subjects[m]))
         }
         f = np.array(list(per_subject.values()))
         out[tag] = {
+            "k": k,
             "macro_f1_mean": float(f.mean()),
             "macro_f1_std": float(f.std()),
             "per_subject": per_subject,
@@ -90,25 +106,25 @@ def _score(y, proba, sessions, subjects, k) -> dict:
     return out
 
 
-def loso(name: str, f: np.ndarray, w: dict, k: int, seed: int) -> dict:
+def loso(fit_predict, x: np.ndarray, w: dict, ks: dict) -> dict:
     """LOSO over ``w["subject"]``: every window is predicted by the fold that held it out."""
     labelled = w["y"] != UNLABELLED
-    proba = np.zeros((len(f), len(LABELS)))
+    proba = np.zeros((len(x), len(LABELS)))
     for tr, te in loso_folds(w["subject"]):
         tr = tr[labelled[tr]]
-        proba[te] = _predict(tree.make(name, seed), f[tr], w["y"][tr], f[te])
-    return _score(w["y"], proba, w["session"], w["subject"], k)
+        proba[te] = fit_predict(x[tr], w["y"][tr], x[te])
+    return _score(w["y"], proba, w["session"], w["subject"], ks)
 
 
-def external(name: str, f_tr, w_tr, f_te, w_te, k: int, seed: int) -> dict:
+def external(fit_predict, x_tr, w_tr, x_te, w_te, ks: dict) -> dict:
     """Fit on all training windows, score the external set per wrist."""
     check_disjoint(w_tr["subject"], w_te["subject"])
     m = w_tr["y"] != UNLABELLED
-    proba = _predict(tree.make(name, seed), f_tr[m], w_tr["y"][m], f_te)
+    proba = fit_predict(x_tr[m], w_tr["y"][m], x_te)
     out = {}
     for wrist in sorted(set(w_te["wrist"])):
         i = w_te["wrist"] == wrist
-        out[wrist] = _score(w_te["y"][i], proba[i], w_te["session"][i], w_te["subject"][i], k)
+        out[wrist] = _score(w_te["y"][i], proba[i], w_te["session"][i], w_te["subject"][i], ks)
     return out
 
 
@@ -121,7 +137,7 @@ def _git_sha() -> str:
 def run(config: str | Path, out: Path = corpus.REPORTS) -> dict:
     """Window-size sweep x models, LOSO on uwash, external test on zhang_who."""
     cfg = yaml.safe_load(Path(config).read_text())
-    seed, k = cfg["seed"], cfg["moving_average_k"]
+    seed = cfg["seed"]
     random.seed(seed)
     np.random.seed(seed)
     df = corpus.load()
@@ -132,15 +148,26 @@ def run(config: str | Path, out: Path = corpus.REPORTS) -> dict:
         w_tr = session_windows(train, size, stride)
         # Training data is left wrist only (D19); right-wrist test data is mirrored into it.
         w_te = session_windows(test, size, stride, mirror="right")
-        f_tr, f_te = features.extract_features(w_tr["x"]), features.extract_features(w_te["x"])
+        ks = smoothing_ks(cfg["moving_average_s"], stride)
+        feats = {}
         n = {"train_windows": int((w_tr["y"] != UNLABELLED).sum())}
         for name in cfg["models"]:
             print(f"{size} s  {name}", flush=True)
+            if name.startswith("cnn"):
+                x_tr, x_te = w_tr["x"], w_te["x"]
+            else:
+                if not feats:
+                    feats = {
+                        k: features.extract_features(w["x"])
+                        for k, w in (("tr", w_tr), ("te", w_te))
+                    }
+                x_tr, x_te = feats["tr"], feats["te"]
+            fp = learner(name, cfg, seed)
             report["results"][f"{size}s/{name}"] = {
                 **n,
-                "loso": loso(name, f_tr, w_tr, k, seed),
-                "zhang_who": external(name, f_tr, w_tr, f_te, w_te, k, seed),
+                "loso": loso(fp, x_tr, w_tr, ks),
+                "zhang_who": external(fp, x_tr, w_tr, x_te, w_te, ks),
             }
     out.mkdir(parents=True, exist_ok=True)
-    (out / "M2_step_trees.json").write_text(json.dumps(report, indent=1))
+    (out / f"M2_{Path(config).stem}.json").write_text(json.dumps(report, indent=1))
     return report

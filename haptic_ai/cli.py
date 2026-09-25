@@ -43,11 +43,11 @@ def _evaluate(args: argparse.Namespace) -> int:
 
     r = evaluate.run(args.config)
     for key, v in r["results"].items():
-        a, b = v["loso"]["raw"], v["loso"]["smoothed"]
-        print(
-            f"{key:10} LOSO macro-F1 {a['macro_f1_mean']:.3f} ± {a['macro_f1_std']:.3f}"
-            f"  smoothed {b['macro_f1_mean']:.3f} ± {b['macro_f1_std']:.3f}"
-        )
+        cells = [
+            f"{tag} {s['macro_f1_mean']:.3f} ± {s['macro_f1_std']:.3f}"
+            for tag, s in v["loso"].items()
+        ]
+        print(f"{key:12} LOSO macro-F1  " + "  ".join(cells))
     return 0
 
 

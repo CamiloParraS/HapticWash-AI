@@ -342,3 +342,33 @@ per subject, dummy (stratified) alongside.
   augmentation, and features that are less energy-bound.
 - The window size is **not chosen yet**: 5 s wins LOSO but has the fewest training windows
   and transfers worst. Decide after the CNN comparison.
+
+## D21 — 2026-09-24 — M2 CNN: Keras, smoothing in seconds, D10 augmentation, CPU training
+
+- **Framework: Keras / TensorFlow 2.17** (closes the SPEC §2.2 choice and D2's "revisit at
+  M2"). TF is already pinned in the `ml` extra, the stub model exports through it in CI, and
+  `export.py` is written against it. PyTorch would not remove the Linux constraint:
+  `ai-edge-torch` is Linux-first too. CNN training and export run in WSL or CI.
+- **CNN:** 3 × (Conv1D → BatchNorm → ReLU → MaxPool), filters 32/64/64, kernels 5/5/3,
+  global average pool, dropout 0.3, softmax over the 7 labels. About 22k weights, well under
+  the 150 KB budget at int8. Balanced class weights. Fixed 30 epochs, no early stopping,
+  because the only held-out data in a LOSO fold is the test subject. z-score stats come from
+  the un-augmented training windows and become `norm_mean` / `norm_std`.
+- **Smoothing is set in seconds:** `moving_average_s` in the configs, converted to
+  k = round(s / stride) per window size. The report shows raw, 2 s and 3 s. The chosen value
+  becomes `moving_average_k` in `model_meta.json` for the chosen window.
+- **D10 augmentation** (`preprocess.augment`, training only, redrawn every epoch): rotation
+  within ±15° about a random axis, amplitude × U(0.5, 1.5), jitter at 0.05 × channel std.
+  `cnn` and `cnn_aug` are both reported. **Caveat:** the amplitude range was motivated by the
+  zhang_who amplitude gap (D20), so zhang is no longer fully blind to the augmentation design.
+  To limit that, the range is a generic ±50 % fixed before any augmented result, and it is not
+  tuned on zhang numbers.
+- **CPU, not GPU.** The RTX 4050 works in WSL2 with `tensorflow[and-cuda]`, but it was
+  slower than the CPU for this model at every batch size (batch 256: ~3.5 s vs 1.9 s per
+  epoch). The model is too small to hide the transfer and launch overhead. No `gpu` extra was
+  added. Batch 256 with learning rate 0.002 (scaled up from 64 / 0.001, not tuned).
+- **WSL gotcha:** piping TF's CUDA logging through `wsl` crashed the WSL VM twice
+  (`RPC_S_CALL_FAILED`). Redirect long runs to a file.
+- **Deferred:** mirror augmentation for right-wrist wearers. It has to act on raw axes
+  before gravity alignment, so it belongs in `session_windows`. Until then, zhang right is
+  mirrored at test time (D19).

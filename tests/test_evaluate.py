@@ -35,3 +35,8 @@ def test_macro_f1_uses_steps_1_to_5_only():
     y = np.array([0, 1, 2, 3, 4, 5, 6])
     pred = np.array([6, 1, 2, 3, 4, 5, 0])  # NULL and WASH_OTHER swapped: not scored
     assert evaluate.macro_f1(y, pred) == 1.0
+
+
+def test_smoothing_is_set_in_seconds():
+    assert evaluate.smoothing_ks([2.0, 3.0], stride_s=1.0) == {"raw": 1, "ma_2s": 2, "ma_3s": 3}
+    assert evaluate.smoothing_ks([2.0], stride_s=2.5) == {"raw": 1, "ma_2s": 1}
