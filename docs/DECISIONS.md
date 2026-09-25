@@ -296,3 +296,18 @@ From the human review of the M1 plots.
 - **Session ids are `<session>_t<ms>`**, the piece's start offset in the source recording,
   not a running `_s<k>` count. A count renumbers every later piece whenever an earlier gap
   changes, so reviewers could not track a session across runs.
+
+## D19 — 2026-09-24 — uwash is the left wrist; zhang_who mapped into its frame
+
+- **uwash wrist = left.** The paper doesn't state it, but its data-collection photos show
+  the watch on the left wrist (owner check).
+- **zhang_who axes: (x, y, z) → (−x, y, −z)** for acc and gyro, both wrists. During wash
+  steps every uwash subject has mean acc x < 0, while zhang left has x ≈ +3 and zhang right
+  x ≈ −3.5. Fitting per-step gravity directions, zhang left maps onto uwash best with x and
+  z flipped: a 180° rotation about y, a proper rotation (det +1). zhang right is the
+  x-mirror of zhang left, so the same rotation serves both wrists and `preprocess.mirror`
+  (x flip) stays valid. Details in `docs/label_mapping.md`.
+- **Still unverified:** that Tizen's frame equals Android's. uwash is the reference frame,
+  so if it is off, both datasets are off together. Check against a real Wear OS watch.
+- **M2 consequence:** training data is left wrist only. Mirror augmentation is needed to
+  cover right-wrist wearers, and zhang results are reported per wrist.

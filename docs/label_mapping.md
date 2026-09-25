@@ -56,14 +56,19 @@ direction on average, not the full frame.
 
 | dataset | device | wrist | units at source → canonical | mean acc (x, y, z) m/s² | mapping to Android |
 |---|---|---|---|---|---|
-| `zhang_who` | Byteflies | left | counts; acc / 4096 g, gyro / 131 °/s (D17) | (3.2, −5.5, −1.5) | **unverified**, passed through as-is |
-| `zhang_who` | Byteflies | right | same | (−3.9, −4.8, −4.8) | **unverified**, passed through as-is |
-| `uwash` | Samsung Gear Sport (Tizen) | unknown | acc m/s²; gyro °/s → rad/s | (−3.6, −6.3, −2.0) | assumed same as Android (Tizen uses the same device frame); **unverified** |
+| `zhang_who` | Byteflies | left | counts; acc / 4096 g, gyro / 131 °/s (D17) | (3.2, −5.5, −1.5) as recorded | (x, y, z) → (−x, y, −z), acc and gyro (D19) |
+| `zhang_who` | Byteflies | right | same | (−3.9, −4.8, −4.8) as recorded | same as left |
+| `uwash` | Samsung Gear Sport (Tizen) | left (paper photos, D19) | acc m/s²; gyro °/s → rad/s | (−3.6, −6.3, −2.0) | as-is; assumes Tizen = Android, **unverified** against a Wear OS watch |
 
-Gravity alignment (§8.7) removes tilt, so the only frame differences left are heading and
-reflections. Mirroring (`preprocess.mirror`) assumes x runs across the wrist. Both need a
-look before M2 depends on them. The fix is a per-dataset signed permutation in the
-adapter, never a guess.
+Mean acc is the raw recording, before any mapping. Gravity alignment (§8.7) removes tilt
+but not heading. A 180° flip about y turns into a 180° heading difference after alignment,
+so the zhang mapping matters even for aligned data.
+
+How D19 was found: per-step mean gravity directions (labels 1–6), fitted over all eight
+axis-sign combinations. zhang left → uwash fits best with (−1, 1, −1) (mean error 30°, next
+best 50°), and a free orthogonal fit gives the same flip plus ~24° mounting tilt. zhang
+right → left fits best with x alone flipped, so the two zhang wrists are mirror images
+across x, as `preprocess.mirror` assumes. The flip commutes with that mirror.
 
 ## Known data issues
 
