@@ -36,6 +36,9 @@ LABEL_MAP = {
     7: -1,
 }
 WRISTS = {"L": "left", "R": "right"}
+# Byteflies -> uwash/Android frame: 180° about y, (x, y, z) -> (-x, y, -z). A rotation, so acc
+# and gyro take the same signs. Fitted on per-step gravity directions against uwash (D19).
+TO_ANDROID = np.array([-1.0, 1.0, -1.0])
 
 
 def read_axis(path: Path) -> np.ndarray:
@@ -64,10 +67,8 @@ def load_wash(files: dict[str, Path], n: int, w: str) -> pd.DataFrame:
     labels = label_samples(m, frame)
     x = preprocess.resample(np.hstack([acc[:m], gyr[:m]]), FS, schema.NOMINAL_RATE_HZ)
     y = labels[:: FS // schema.NOMINAL_RATE_HZ]  # the sample each 50 Hz output sits on
-    acc50 = x[:, :3] / ACC_PER_G * preprocess.G
-    gyr50 = np.deg2rad(x[:, 3:] / GYR_PER_DPS)
-    # ponytail: Byteflies axes passed through as-is; the Android mapping is unverified.
-    # See the axis-frame table in docs/label_mapping.md (D10).
+    acc50 = x[:, :3] / ACC_PER_G * preprocess.G * TO_ANDROID
+    gyr50 = np.deg2rad(x[:, 3:] / GYR_PER_DPS) * TO_ANDROID
     df = pd.DataFrame(np.hstack([acc50, gyr50]), columns=["ax", "ay", "az", "gx", "gy", "gz"])
     df.insert(0, "timestamp_ns", np.arange(len(df), dtype="int64") * 20_000_000)
     df["label"] = y

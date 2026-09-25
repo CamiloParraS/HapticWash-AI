@@ -46,5 +46,6 @@ def test_load_wash(tmp_path):
     assert set(df["label"]) == {1}
     assert df["timestamp_ns"].iat[1] == 20_000_000
     mid = df.iloc[100:400]  # away from resample edge effects
-    assert np.allclose(mid["az"], 9.80665, atol=1e-3)
-    assert np.allclose(mid["gz"], np.pi, atol=1e-3)
+    # Byteflies +z maps to Android -z (D19).
+    assert np.allclose(mid["az"], -9.80665, atol=1e-3)
+    assert np.allclose(mid["gz"], -np.pi, atol=1e-3)

@@ -86,12 +86,12 @@ def load_file(path: Path) -> pd.DataFrame:
             "label": labels[np.searchsorted(t, g, "right") - 1],  # last raw sample at or before
             "subject_id": f"uwash_{local}",
             "session_id": local,
-            "wrist": "unknown",  # the paper doesn't say which wrist
+            "wrist": "left",  # not stated in the paper; its data-collection photos show left (D19)
             "source": "uwash",
         }
     )
-    # ponytail: axes passed through as-is. Tizen shares Android's frame (az ≈ +g screen-up);
-    # confirm in the D10 axis table at M1.
+    # ponytail: axes passed through as-is on the assumption that Tizen shares Android's frame.
+    # Unverified until checked against a real Wear OS watch (D19).
     return schema.validate(schema.coerce_dtypes(df))
 
 
