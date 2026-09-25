@@ -76,7 +76,7 @@
         "WASH_OTHER": 1253.54
       },
       "wrist_rows": {
-        "unknown": 925799
+        "left": 925799
       },
       "dt_ms": {
         "median": 20.0,
