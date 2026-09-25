@@ -372,3 +372,28 @@ per subject, dummy (stratified) alongside.
 - **Deferred:** mirror augmentation for right-wrist wearers. It has to act on raw axes
   before gravity alignment, so it belongs in `session_windows`. Until then, zhang right is
   mirrored at test time (D19).
+
+## D22 — 2026-09-25 — Export: golden files from a held-out uwash subject, never zhang_who
+
+`python -m haptic_ai.cli export --config configs/step_cnn.yaml` (Linux) trains the release
+model and writes `artifacts/`: `model.tflite`, `model_meta.json`, `golden/{raw,inputs,
+outputs}.npy`. The old `train` and `golden` subcommands are folded into it.
+
+- **Golden windows come from uwash, not zhang.** Golden files ship with the release, and
+  zhang_who is CC-BY-NC-ND, so its windows can't be redistributed (D4, D15). SPEC 9.2 wants
+  windows from held-out subjects, so the release model trains on 50 of the 51 uwash subjects,
+  and the 51st, `uwash_library_2` (MIT), supplies the golden files. It was chosen because it
+  has the longest continuous session (449.5 s), not for its scores. Losing one subject from
+  training is the price.
+- **`golden/raw.npy`** is that whole session as a raw stream `(n, 6)` from its first sample,
+  so the watch can run the stateful chain (align → bandpass → windows → z-score) from zero
+  state and compare with `inputs.npy` (SPEC 9.2 item 4). `tests/test_export.py` reproduces
+  `inputs.npy` from `raw.npy` in Python.
+- **`golden/outputs.npy` is the TFLite model's output** in the Python interpreter, the same
+  artifact the watch runs, so SPEC 9.2's 1e-2 tolerance measures runtime parity and not
+  quantization error. The float Keras outputs go to `artifacts/float_outputs.npy` (not
+  released). `test_export` bounds the difference: max |Δp| < 0.1, top-1 agreement ≥ 95 %.
+- **Quantization:** dynamic range (int8 weights, float32 in/out, SPEC 8.3). The ≤ 0.02 F1
+  drop is measured on zhang_who locally. It is never written to a released file.
+- **Smoke run (1 epoch, not a release):** 38 KB model, F1 drop −0.0005, 298 golden windows,
+  max |Δp| vs float 0.0014.

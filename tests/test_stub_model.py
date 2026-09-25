@@ -37,7 +37,8 @@ def test_tflite_tensor_shapes_match_spec_8_3(meta):
     inp = interp.get_input_details()[0]
     out = interp.get_output_details()[0]
 
-    assert list(inp["shape"]) == [1, 150, 6]  # W = window_size_s * sample_rate_hz
+    w = round(meta["window_size_s"] * meta["sample_rate_hz"])
+    assert list(inp["shape"]) == [1, w, 6]
     assert inp["dtype"].__name__ == "float32"
     assert list(out["shape"]) == [1, len(LABELS)] == [1, 7]
     assert out["dtype"].__name__ == "float32"
