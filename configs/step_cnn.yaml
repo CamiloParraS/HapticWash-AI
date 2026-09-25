@@ -13,3 +13,9 @@ augment:                          # D10; training only
   rotate_deg: 15
   scale: [0.5, 1.5]
   jitter: 0.05
+release:                          # chosen from uwash LOSO only (D23)
+  model: cnn_aug
+  window_s: 3.0
+  smoothing: ma_3s
+  golden_subject: uwash_library_2 # held out of the release model (D22)
+  model_version: 0.1.0
