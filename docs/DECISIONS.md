@@ -397,3 +397,10 @@ outputs}.npy`. The old `train` and `golden` subcommands are folded into it.
   drop is measured on zhang_who locally. It is never written to a released file.
 - **Smoke run (1 epoch, not a release):** 38 KB model, F1 drop −0.0005, 298 golden windows,
   max |Δp| vs float 0.0014.
+
+## D23 — 2026-09-25 — M2 release setting: CNN + augmentation, 3 s windows, 3 s smoothing
+
+From the LOSO sweep on uwash only (`reports/M2_step_classifier.md`): 0.705 ± 0.127 vs a
+0.10 dummy. The top three settings were within 0.005, inside the fold noise, so 3 s beats 5 s
+on latency, and it is the SPEC default. `moving_average_k = 2` (3 s at a 1.5 s stride). Export
+@ `c150c52`: 37,992 B, int8 F1 drop 0.0000. zhang_who external: left 0.56, right 0.44.
