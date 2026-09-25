@@ -311,3 +311,34 @@ From the human review of the M1 plots.
   so if it is off, both datasets are off together. Check against a real Wear OS watch.
 - **M2 consequence:** training data is left wrist only. Mirror augmentation is needed to
   cover right-wrist wearers, and zhang results are reported per wrist.
+
+## D20 — 2026-09-24 — M2 feature baselines: first LOSO numbers and what they show
+
+`uv run python -m haptic_ai.cli evaluate --config configs/step_trees.yaml` →
+`reports/M2_step_trees.json`. LOSO over 51 `uwash` subjects, macro-F1 on steps 1–5, mean ± std
+per subject, dummy (stratified) alongside.
+
+| window | dummy | RF | GB | GB + MA k=5 | GB on zhang L / R |
+|---|---|---|---|---|---|
+| 2 s | 0.12 | 0.59 ± 0.11 | 0.61 ± 0.10 | 0.59 | 0.25 / 0.27 |
+| 3 s | 0.12 | 0.61 ± 0.12 | 0.63 ± 0.11 | 0.52 | 0.22 / 0.22 |
+| 5 s | 0.12 | 0.62 ± 0.12 | **0.67 ± 0.12** | 0.37 | 0.13 / 0.19 |
+
+- **Choices:** 12 features per axis + 6 within-sensor correlations (78). RF uses
+  `class_weight="balanced_subsample"`. GB (`HistGradientBoosting`, 100 iters) has no class
+  weight: with it a fit took 108 s (sample weights disable histogram subtraction), and the
+  step classes are within 2× of each other. Windows labelled −1 are kept for smoothing (the
+  watch predicts every window) and dropped only for training and scoring. zhang right
+  wrist is mirrored into the left frame at test time (D19).
+- **Moving average k=5 hurts, more so at longer windows.** k counts windows, so it looks
+  back k × stride = 5–12.5 s, but a uwash step lasts about 6 s per wash. The SPEC's k=5
+  needs to be set in seconds (≈ 2–3 s) instead. Not tuned yet.
+- **zhang_who transfer is poor (0.13–0.27), and almost all of it is "predicted NULL".**
+  zhang subjects scrub at about half uwash's amplitude on steps 1, 2, 3, 5 (bandpassed
+  acc RMS ≈ 1.5 vs 3.5 m/s², gyro ≈ 0.5 vs 1.0 rad/s). THUMBS has the same amplitude in
+  both and transfers at 91–98 %, which also supports the D19 axis mapping. A scale bug
+  would shrink every step equally, so this is a behaviour gap (a guided lab protocol vs
+  natural washing), and exactly the risk in D10. Next: the D10 amplitude-scaling
+  augmentation, and features that are less energy-bound.
+- The window size is **not chosen yet**: 5 s wins LOSO but has the fewest training windows
+  and transfers worst. Decide after the CNN comparison.
