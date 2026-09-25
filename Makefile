@@ -1,4 +1,4 @@
-.PHONY: lint test validate-schema stub-model ingest report-corpus train-step eval-step export golden
+.PHONY: lint test validate-schema stub-model ingest report-corpus eval-trees eval-step export
 
 lint:
 	uv run ruff check .
@@ -19,14 +19,12 @@ ingest:
 report-corpus:
 	uv run python -m haptic_ai.cli report-corpus
 
-train-step:
-	uv run python -m haptic_ai.cli train --config configs/step_cnn.yaml
+eval-trees:
+	uv run python -m haptic_ai.cli evaluate --config configs/step_trees.yaml
 
+# eval-step and export need TensorFlow: Linux only (D2), run in WSL or CI.
 eval-step:
-	uv run python -m haptic_ai.cli evaluate --config configs/step_cnn.yaml
+	uv run --extra ml python -m haptic_ai.cli evaluate --config configs/step_cnn.yaml
 
 export:
-	uv run python -m haptic_ai.cli export --config configs/step_cnn.yaml
-
-golden:
-	uv run python -m haptic_ai.cli golden --config configs/step_cnn.yaml
+	uv run --extra ml python -m haptic_ai.cli export --config configs/step_cnn.yaml

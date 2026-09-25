@@ -28,7 +28,9 @@ uv run python -m haptic_ai.cli report-corpus          # reports/M1_corpus.{json,
 python scripts/fetch_data.py [key ...]    # download datasets into data/ (default: uwash, zhang_who)
 ```
 
-`train` / `evaluate` / `export` / `golden` CLI subcommands take `--config configs/step_cnn.yaml`.
+`evaluate --config configs/step_trees.yaml` runs the tree LOSO sweep (Windows is fine).
+`evaluate`/`export --config configs/step_cnn.yaml` need TF, so run them in WSL (D21: CPU, not
+GPU; redirect output to a file, since piping TF logs through `wsl` has crashed the VM).
 
 **TensorFlow (`ml` extra) is Linux-only** (D2). Model export and `scripts/make_stub_model.py`
 run on CI (`.github/workflows/ci.yml`) or in WSL, not on native Windows.

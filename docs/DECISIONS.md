@@ -311,3 +311,96 @@ From the human review of the M1 plots.
   so if it is off, both datasets are off together. Check against a real Wear OS watch.
 - **M2 consequence:** training data is left wrist only. Mirror augmentation is needed to
   cover right-wrist wearers, and zhang results are reported per wrist.
+
+## D20 — 2026-09-24 — M2 feature baselines: first LOSO numbers and what they show
+
+`uv run python -m haptic_ai.cli evaluate --config configs/step_trees.yaml` →
+`reports/M2_step_trees.json`. LOSO over 51 `uwash` subjects, macro-F1 on steps 1–5, mean ± std
+per subject, dummy (stratified) alongside.
+
+| window | dummy | RF | GB | GB + MA k=5 | GB on zhang L / R |
+|---|---|---|---|---|---|
+| 2 s | 0.12 | 0.59 ± 0.11 | 0.61 ± 0.10 | 0.59 | 0.25 / 0.27 |
+| 3 s | 0.12 | 0.61 ± 0.12 | 0.63 ± 0.11 | 0.52 | 0.22 / 0.22 |
+| 5 s | 0.12 | 0.62 ± 0.12 | **0.67 ± 0.12** | 0.37 | 0.13 / 0.19 |
+
+- **Choices:** 12 features per axis + 6 within-sensor correlations (78). RF uses
+  `class_weight="balanced_subsample"`. GB (`HistGradientBoosting`, 100 iters) has no class
+  weight: with it a fit took 108 s (sample weights disable histogram subtraction), and the
+  step classes are within 2× of each other. Windows labelled −1 are kept for smoothing (the
+  watch predicts every window) and dropped only for training and scoring. zhang right
+  wrist is mirrored into the left frame at test time (D19).
+- **Moving average k=5 hurts, more so at longer windows.** k counts windows, so it looks
+  back k × stride = 5–12.5 s, but a uwash step lasts about 6 s per wash. The SPEC's k=5
+  needs to be set in seconds (≈ 2–3 s) instead. Not tuned yet.
+- **zhang_who transfer is poor (0.13–0.27), and almost all of it is "predicted NULL".**
+  zhang subjects scrub at about half uwash's amplitude on steps 1, 2, 3, 5 (bandpassed
+  acc RMS ≈ 1.5 vs 3.5 m/s², gyro ≈ 0.5 vs 1.0 rad/s). THUMBS has the same amplitude in
+  both and transfers at 91–98 %, which also supports the D19 axis mapping. A scale bug
+  would shrink every step equally, so this is a behaviour gap (a guided lab protocol vs
+  natural washing), and exactly the risk in D10. Next: the D10 amplitude-scaling
+  augmentation, and features that are less energy-bound.
+- The window size is **not chosen yet**: 5 s wins LOSO but has the fewest training windows
+  and transfers worst. Decide after the CNN comparison.
+
+## D21 — 2026-09-24 — M2 CNN: Keras, smoothing in seconds, D10 augmentation, CPU training
+
+- **Framework: Keras / TensorFlow 2.17** (closes the SPEC §2.2 choice and D2's "revisit at
+  M2"). TF is already pinned in the `ml` extra, the stub model exports through it in CI, and
+  `export.py` is written against it. PyTorch would not remove the Linux constraint:
+  `ai-edge-torch` is Linux-first too. CNN training and export run in WSL or CI.
+- **CNN:** 3 × (Conv1D → BatchNorm → ReLU → MaxPool), filters 32/64/64, kernels 5/5/3,
+  global average pool, dropout 0.3, softmax over the 7 labels. About 22k weights, well under
+  the 150 KB budget at int8. Balanced class weights. Fixed 30 epochs, no early stopping,
+  because the only held-out data in a LOSO fold is the test subject. z-score stats come from
+  the un-augmented training windows and become `norm_mean` / `norm_std`.
+- **Smoothing is set in seconds:** `moving_average_s` in the configs, converted to
+  k = round(s / stride) per window size. The report shows raw, 2 s and 3 s. The chosen value
+  becomes `moving_average_k` in `model_meta.json` for the chosen window.
+- **D10 augmentation** (`preprocess.augment`, training only, redrawn every epoch): rotation
+  within ±15° about a random axis, amplitude × U(0.5, 1.5), jitter at 0.05 × channel std.
+  `cnn` and `cnn_aug` are both reported. **Caveat:** the amplitude range was motivated by the
+  zhang_who amplitude gap (D20), so zhang is no longer fully blind to the augmentation design.
+  To limit that, the range is a generic ±50 % fixed before any augmented result, and it is not
+  tuned on zhang numbers.
+- **CPU, not GPU.** The RTX 4050 works in WSL2 with `tensorflow[and-cuda]`, but it was
+  slower than the CPU for this model at every batch size (batch 256: ~3.5 s vs 1.9 s per
+  epoch). The model is too small to hide the transfer and launch overhead. No `gpu` extra was
+  added. Batch 256 with learning rate 0.002 (scaled up from 64 / 0.001, not tuned).
+- **WSL gotcha:** piping TF's CUDA logging through `wsl` crashed the WSL VM twice
+  (`RPC_S_CALL_FAILED`). Redirect long runs to a file.
+- **Deferred:** mirror augmentation for right-wrist wearers. It has to act on raw axes
+  before gravity alignment, so it belongs in `session_windows`. Until then, zhang right is
+  mirrored at test time (D19).
+
+## D22 — 2026-09-25 — Export: golden files from a held-out uwash subject, never zhang_who
+
+`python -m haptic_ai.cli export --config configs/step_cnn.yaml` (Linux) trains the release
+model and writes `artifacts/`: `model.tflite`, `model_meta.json`, `golden/{raw,inputs,
+outputs}.npy`. The old `train` and `golden` subcommands are folded into it.
+
+- **Golden windows come from uwash, not zhang.** Golden files ship with the release, and
+  zhang_who is CC-BY-NC-ND, so its windows can't be redistributed (D4, D15). SPEC 9.2 wants
+  windows from held-out subjects, so the release model trains on 50 of the 51 uwash subjects,
+  and the 51st, `uwash_library_2` (MIT), supplies the golden files. It was chosen because it
+  has the longest continuous session (449.5 s), not for its scores. Losing one subject from
+  training is the price.
+- **`golden/raw.npy`** is that whole session as a raw stream `(n, 6)` from its first sample,
+  so the watch can run the stateful chain (align → bandpass → windows → z-score) from zero
+  state and compare with `inputs.npy` (SPEC 9.2 item 4). `tests/test_export.py` reproduces
+  `inputs.npy` from `raw.npy` in Python.
+- **`golden/outputs.npy` is the TFLite model's output** in the Python interpreter, the same
+  artifact the watch runs, so SPEC 9.2's 1e-2 tolerance measures runtime parity and not
+  quantization error. The float Keras outputs go to `artifacts/float_outputs.npy` (not
+  released). `test_export` bounds the difference: max |Δp| < 0.1, top-1 agreement ≥ 95 %.
+- **Quantization:** dynamic range (int8 weights, float32 in/out, SPEC 8.3). The ≤ 0.02 F1
+  drop is measured on zhang_who locally. It is never written to a released file.
+- **Smoke run (1 epoch, not a release):** 38 KB model, F1 drop −0.0005, 298 golden windows,
+  max |Δp| vs float 0.0014.
+
+## D23 — 2026-09-25 — M2 release setting: CNN + augmentation, 3 s windows, 3 s smoothing
+
+From the LOSO sweep on uwash only (`reports/M2_step_classifier.md`): 0.705 ± 0.127 vs a
+0.10 dummy. The top three settings were within 0.005, inside the fold noise, so 3 s beats 5 s
+on latency, and it is the SPEC default. `moving_average_k = 2` (3 s at a 1.5 s stride). Export
+@ `c150c52`: 37,992 B, int8 F1 drop 0.0000. zhang_who external: left 0.56, right 0.44.

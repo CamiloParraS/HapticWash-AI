@@ -96,3 +96,15 @@ def test_resample_halves_rate():
     assert y.shape == (500, 1)
     ref = np.sin(2 * np.pi * 2 * np.arange(500) / 50)
     assert np.abs(y[50:-50, 0] - ref[50:-50]).max() < 1e-2  # 2 Hz passes the anti-alias filter
+
+
+def test_augment_rotation_preserves_norm_and_scale_scales():
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(8, 100, 6)).astype(np.float32)
+    rot = preprocess.augment(x, np.random.default_rng(1), scale=(1, 1), jitter=0)
+    np.testing.assert_allclose(
+        np.linalg.norm(rot[..., :3], axis=2), np.linalg.norm(x[..., :3], axis=2), rtol=1e-5
+    )
+    assert not np.allclose(rot, x)
+    big = preprocess.augment(x, np.random.default_rng(1), rotate_deg=0, scale=(2, 2), jitter=0)
+    np.testing.assert_allclose(big, 2 * x, rtol=1e-6)

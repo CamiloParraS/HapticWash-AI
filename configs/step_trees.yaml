@@ -1,0 +1,6 @@
+# M2 feature baselines: LOSO on uwash, external test on zhang_who (D15).
+seed: 0
+window_sizes_s: [2.0, 3.0, 5.0]   # SPEC M2 sweep
+overlap: 0.5
+moving_average_s: [2.0, 3.0]      # causal smoothing, in seconds (D21)
+models: [dummy, rf, gb]

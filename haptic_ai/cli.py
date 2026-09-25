@@ -1,16 +1,9 @@
-"""CLI entrypoints. Model commands land at M2."""
+"""CLI entrypoints."""
 
 import argparse
 import sys
 
 from haptic_ai import schema
-
-_LATER = {
-    "train": "M2",
-    "evaluate": "M2",
-    "export": "M2",
-    "golden": "M2",
-}
 
 
 def _validate_schema(args: argparse.Namespace) -> int:
@@ -39,6 +32,30 @@ def _report_corpus(args: argparse.Namespace) -> int:
     return 0
 
 
+def _evaluate(args: argparse.Namespace) -> int:
+    from haptic_ai import evaluate
+
+    r = evaluate.run(args.config)
+    for key, v in r["results"].items():
+        cells = [
+            f"{tag} {s['macro_f1_mean']:.3f} ± {s['macro_f1_std']:.3f}"
+            for tag, s in v["loso"].items()
+        ]
+        print(f"{key:12} LOSO macro-F1  " + "  ".join(cells))
+    return 0
+
+
+def _export(args: argparse.Namespace) -> int:
+    from haptic_ai import export
+
+    c = export.export(args.config)
+    print(
+        f"OK {export.OUT}: {c['model_bytes']} bytes, quantization F1 drop "
+        f"{c['quantization_f1_drop']:.4f}, golden windows {c['golden_windows']}"
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="haptic-ai")
     sub = parser.add_subparsers(dest="command")
@@ -52,16 +69,19 @@ def main() -> int:
     p.set_defaults(func=_ingest)
     p = sub.add_parser("report-corpus", help="Write reports/M1_corpus.{json,md}")
     p.set_defaults(func=_report_corpus)
-    for name in ("train", "evaluate", "export", "golden"):
-        sub.add_parser(name).add_argument("--config", required=True)
+    p = sub.add_parser("evaluate", help="LOSO evaluation, writes reports/M2_*.json")
+    p.add_argument("--config", required=True)
+    p.set_defaults(func=_evaluate)
+    p = sub.add_parser(
+        "export", help="Train the release model; write artifacts/ (tflite, meta, golden)"
+    )
+    p.add_argument("--config", required=True)
+    p.set_defaults(func=_export)
 
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
         return 1
-    if args.command in _LATER:
-        print(f"'{args.command}' is not implemented until {_LATER[args.command]}")
-        return 2
     return args.func(args)
 
 

@@ -12,6 +12,7 @@ from fractions import Fraction
 import numpy as np
 import pandas as pd
 from scipy import signal
+from scipy.spatial.transform import Rotation
 
 G = 9.80665  # m/s² per g
 # SPEC M1: a gap > 100 ms is a session break. uwash bridges gaps <= 200 ms at ingest, so its
@@ -92,3 +93,28 @@ def mirror(acc: np.ndarray, gyr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     # ponytail: assumes x is the across-the-wrist axis (Android watch frame). Check it
     # against the axis-frame table in docs/label_mapping.md before M2 relies on it.
     return acc * [-1.0, 1.0, 1.0], gyr * [1.0, -1.0, -1.0]
+
+
+def augment(
+    x: np.ndarray,
+    rng: np.random.Generator,
+    rotate_deg: float = 15,
+    scale: tuple[float, float] = (0.5, 1.5),
+    jitter: float = 0.05,
+) -> np.ndarray:
+    """Training-only augmentation of preprocessed windows ``(m, W, 6)`` (D10).
+
+    Per window: one small rotation (random axis, angle within ±``rotate_deg``) applied to
+    acc and gyro alike, one amplitude factor from ``scale`` for both sensors, and Gaussian
+    jitter at ``jitter`` × each channel's std. Never applied at evaluation.
+    """
+    m = len(x)
+    axis = rng.normal(size=(m, 3))
+    axis /= np.linalg.norm(axis, axis=1, keepdims=True)
+    angle = np.deg2rad(rng.uniform(-rotate_deg, rotate_deg, m))
+    r = Rotation.from_rotvec(axis * angle[:, None]).as_matrix()  # (m, 3, 3)
+    acc = np.einsum("mij,mtj->mti", r, x[..., :3])
+    gyr = np.einsum("mij,mtj->mti", r, x[..., 3:])
+    out = np.concatenate([acc, gyr], 2) * rng.uniform(*scale, (m, 1, 1))
+    out += rng.normal(size=out.shape) * jitter * out.std(1, keepdims=True)
+    return out.astype(x.dtype)
