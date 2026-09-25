@@ -143,6 +143,8 @@ def run(config: str | Path, out: Path = corpus.REPORTS) -> dict:
     df = corpus.load()
     train, test = df[df["source"] == "uwash"], df[df["source"] == "zhang_who"]
     report = {"config": cfg, "commit": _git_sha(), "seed": seed, "results": {}}
+    out.mkdir(parents=True, exist_ok=True)
+    dest = out / f"M2_{Path(config).stem}.json"
     for size in cfg["window_sizes_s"]:
         stride = size * (1 - cfg["overlap"])
         w_tr = session_windows(train, size, stride)
@@ -168,6 +170,6 @@ def run(config: str | Path, out: Path = corpus.REPORTS) -> dict:
                 "loso": loso(fp, x_tr, w_tr, ks),
                 "zhang_who": external(fp, x_tr, w_tr, x_te, w_te, ks),
             }
-    out.mkdir(parents=True, exist_ok=True)
-    (out / f"M2_{Path(config).stem}.json").write_text(json.dumps(report, indent=1))
+            # Save after every block so a killed multi-hour sweep keeps what it finished.
+            dest.write_text(json.dumps(report, indent=1))
     return report
