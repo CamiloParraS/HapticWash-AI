@@ -7,7 +7,6 @@ from haptic_ai import schema
 
 _LATER = {
     "train": "M2",
-    "evaluate": "M2",
     "export": "M2",
     "golden": "M2",
 }
@@ -39,6 +38,19 @@ def _report_corpus(args: argparse.Namespace) -> int:
     return 0
 
 
+def _evaluate(args: argparse.Namespace) -> int:
+    from haptic_ai import evaluate
+
+    r = evaluate.run(args.config)
+    for key, v in r["results"].items():
+        a, b = v["loso"]["raw"], v["loso"]["smoothed"]
+        print(
+            f"{key:10} LOSO macro-F1 {a['macro_f1_mean']:.3f} ± {a['macro_f1_std']:.3f}"
+            f"  smoothed {b['macro_f1_mean']:.3f} ± {b['macro_f1_std']:.3f}"
+        )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="haptic-ai")
     sub = parser.add_subparsers(dest="command")
@@ -52,7 +64,10 @@ def main() -> int:
     p.set_defaults(func=_ingest)
     p = sub.add_parser("report-corpus", help="Write reports/M1_corpus.{json,md}")
     p.set_defaults(func=_report_corpus)
-    for name in ("train", "evaluate", "export", "golden"):
+    p = sub.add_parser("evaluate", help="LOSO evaluation, writes reports/M2_*.json")
+    p.add_argument("--config", required=True)
+    p.set_defaults(func=_evaluate)
+    for name in ("train", "export", "golden"):
         sub.add_parser(name).add_argument("--config", required=True)
 
     args = parser.parse_args()

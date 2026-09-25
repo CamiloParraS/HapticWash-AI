@@ -1,13 +1,146 @@
-"""LOSO CV, metrics, confusion matrices."""
+"""LOSO cross-validation, the leak guard, metrics and the M2 report (SPEC M2, 9.4).
+
+Train and select on `uwash` with leave-one-subject-out. `zhang_who` is an external test
+set only: fitted once on all of `uwash`, never used for training or selection (D15).
+"""
+
+import json
+import random
+import subprocess
+from pathlib import Path
 
 import numpy as np
+import yaml
+from sklearn.metrics import confusion_matrix, f1_score
+
+from haptic_ai import corpus, features
+from haptic_ai.models import tree
+from haptic_ai.schema import LABELS, UNLABELLED
+from haptic_ai.windows import session_windows
+
+STEPS = [1, 2, 3, 4, 5]  # SPEC M2: macro-F1 is over the five WHO steps
+ALL = list(range(len(LABELS)))
 
 
-def leave_one_subject_out_cv(model, X, y, subjects):
-    """Leave-One-Subject-Out cross-validation."""
-    pass
+class LeakError(AssertionError):
+    """A subject appears in both train and test."""
 
 
-def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    """Compute accuracy, F1, confusion matrix."""
-    pass
+def check_disjoint(train_subjects: np.ndarray, test_subjects: np.ndarray) -> None:
+    leak = set(train_subjects) & set(test_subjects)
+    if leak:
+        raise LeakError(f"subjects in both train and test: {sorted(leak)}")
+
+
+def loso_folds(subjects: np.ndarray):
+    """Yield ``(train_idx, test_idx)``, one fold per subject, each checked for leaks."""
+    for s in sorted(set(subjects)):
+        te = subjects == s
+        check_disjoint(subjects[~te], subjects[te])
+        yield np.flatnonzero(~te), np.flatnonzero(te)
+
+
+def moving_average(proba: np.ndarray, sessions: np.ndarray, k: int) -> np.ndarray:
+    """Causal mean of the last ``k`` window probabilities, restarting at each session."""
+    out = np.empty_like(proba)
+    for s in dict.fromkeys(sessions):
+        i = np.flatnonzero(sessions == s)
+        c = np.cumsum(proba[i], 0)
+        c[k:] = c[k:] - c[:-k]
+        out[i] = c / np.minimum(np.arange(1, len(i) + 1), k)[:, None]
+    return out
+
+
+def macro_f1(y: np.ndarray, pred: np.ndarray) -> float:
+    return float(f1_score(y, pred, labels=STEPS, average="macro", zero_division=0))
+
+
+def _predict(model, f_train, y_train, f_test) -> np.ndarray:
+    """Fit on labelled windows; return ``(n, 7)`` probabilities for every test window."""
+    model.fit(f_train, y_train)
+    proba = np.zeros((len(f_test), len(LABELS)))
+    proba[:, model.classes_] = model.predict_proba(f_test)
+    return proba
+
+
+def _score(y, proba, sessions, subjects, k) -> dict:
+    """Per-subject macro-F1 raw and smoothed, per-class F1, and summed confusion matrix."""
+    out = {}
+    for tag, p in (("raw", proba), ("smoothed", moving_average(proba, sessions, k))):
+        m = y != UNLABELLED
+        pred = p.argmax(1)
+        per_subject = {
+            s: macro_f1(y[m & (subjects == s)], pred[m & (subjects == s)])
+            for s in sorted(set(subjects[m]))
+        }
+        f = np.array(list(per_subject.values()))
+        out[tag] = {
+            "macro_f1_mean": float(f.mean()),
+            "macro_f1_std": float(f.std()),
+            "per_subject": per_subject,
+            "per_class_f1": dict(
+                zip(
+                    LABELS,
+                    f1_score(y[m], pred[m], labels=ALL, average=None, zero_division=0),
+                    strict=True,
+                )
+            ),
+            "confusion": confusion_matrix(y[m], pred[m], labels=ALL).tolist(),
+        }
+    return out
+
+
+def loso(name: str, f: np.ndarray, w: dict, k: int, seed: int) -> dict:
+    """LOSO over ``w["subject"]``: every window is predicted by the fold that held it out."""
+    labelled = w["y"] != UNLABELLED
+    proba = np.zeros((len(f), len(LABELS)))
+    for tr, te in loso_folds(w["subject"]):
+        tr = tr[labelled[tr]]
+        proba[te] = _predict(tree.make(name, seed), f[tr], w["y"][tr], f[te])
+    return _score(w["y"], proba, w["session"], w["subject"], k)
+
+
+def external(name: str, f_tr, w_tr, f_te, w_te, k: int, seed: int) -> dict:
+    """Fit on all training windows, score the external set per wrist."""
+    check_disjoint(w_tr["subject"], w_te["subject"])
+    m = w_tr["y"] != UNLABELLED
+    proba = _predict(tree.make(name, seed), f_tr[m], w_tr["y"][m], f_te)
+    out = {}
+    for wrist in sorted(set(w_te["wrist"])):
+        i = w_te["wrist"] == wrist
+        out[wrist] = _score(w_te["y"][i], proba[i], w_te["session"][i], w_te["subject"][i], k)
+    return out
+
+
+def _git_sha() -> str:
+    r = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
+    dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+    return r.stdout.strip() + ("-dirty" if dirty.stdout.strip() else "")
+
+
+def run(config: str | Path, out: Path = corpus.REPORTS) -> dict:
+    """Window-size sweep x models, LOSO on uwash, external test on zhang_who."""
+    cfg = yaml.safe_load(Path(config).read_text())
+    seed, k = cfg["seed"], cfg["moving_average_k"]
+    random.seed(seed)
+    np.random.seed(seed)
+    df = corpus.load()
+    train, test = df[df["source"] == "uwash"], df[df["source"] == "zhang_who"]
+    report = {"config": cfg, "commit": _git_sha(), "seed": seed, "results": {}}
+    for size in cfg["window_sizes_s"]:
+        stride = size * (1 - cfg["overlap"])
+        w_tr = session_windows(train, size, stride)
+        # Training data is left wrist only (D19); right-wrist test data is mirrored into it.
+        w_te = session_windows(test, size, stride, mirror="right")
+        f_tr, f_te = features.extract_features(w_tr["x"]), features.extract_features(w_te["x"])
+        n = {"train_windows": int((w_tr["y"] != UNLABELLED).sum())}
+        for name in cfg["models"]:
+            print(f"{size} s  {name}", flush=True)
+            report["results"][f"{size}s/{name}"] = {
+                **n,
+                "loso": loso(name, f_tr, w_tr, k, seed),
+                "zhang_who": external(name, f_tr, w_tr, f_te, w_te, k, seed),
+            }
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "M2_step_trees.json").write_text(json.dumps(report, indent=1))
+    return report
