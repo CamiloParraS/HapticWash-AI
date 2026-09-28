@@ -404,3 +404,21 @@ From the LOSO sweep on uwash only (`reports/M2_step_classifier.md`): 0.705 ± 0.
 0.10 dummy. The top three settings were within 0.005, inside the fold noise, so 3 s beats 5 s
 on latency, and it is the SPEC default. `moving_average_k = 2` (3 s at a 1.5 s stride). Export
 @ `c150c52`: 37,992 B, int8 F1 drop 0.0000. zhang_who external: left 0.56, right 0.44.
+## D25 — 2026-09-28 — Mirrored golden file for the app's wrist mirroring (M4 slice 0)
+
+- **`golden/inputs_right.npy`**: `golden/raw.npy` mirrored with `preprocess.mirror` on the raw
+  axes, then the normal chain (gravity-align -> bandpass -> windows -> z-score with
+  `norm_mean`/`norm_std`), float32, same shape as `inputs.npy`. The AI repo stays the one
+  definition of mirroring; the app's Kotlin port (M4 slice (d)) must reproduce this file, as
+  §9.2 does for `inputs.npy`.
+- **Generated without retraining.** `export` trains the release model (D22), so re-running it
+  would be a new release. The file depends only on `raw.npy` and the preprocessing in
+  `model_meta.json`, so `haptic_ai.cli golden-mirror` (`windows.write_mirrored_golden`, no TF,
+  runs on Windows) writes it, and `export` calls the same function so every release ships it.
+  `model.tflite`, `model_meta.json` and the other golden files are unchanged.
+- **uwash only** (MIT): the golden session is the held-out uwash subject; never zhang_who
+  (D4, D15, D22).
+- No `training_wrist` field in §8.2/§8.3: mirroring is frame geometry (D19), not a model
+  constant. Mirror augmentation stays deferred (D21). The across-the-wrist x-axis assumption in
+  `preprocess.mirror` is still unverified on hardware (D19, M6): the fixture proves the repos
+  agree, not that the physics is right.

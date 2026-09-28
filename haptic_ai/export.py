@@ -17,7 +17,7 @@ import yaml
 from haptic_ai import corpus, evaluate
 from haptic_ai.models import cnn1d
 from haptic_ai.schema import LABELS, NOMINAL_RATE_HZ, UNLABELLED
-from haptic_ai.windows import session_windows
+from haptic_ai.windows import session_windows, write_mirrored_golden
 
 OUT = Path("artifacts")
 CHANNELS = ["ax", "ay", "az", "gx", "gy", "gz"]
@@ -138,6 +138,7 @@ def export(config: str | Path, out: Path = OUT) -> dict:
     np.save(out / "golden" / "raw.npy", raw)
     np.save(out / "golden" / "inputs.npy", inputs)
     np.save(out / "golden" / "outputs.npy", outputs)
+    write_mirrored_golden(out)
     np.save(out / "float_outputs.npy", float_out)  # test_export only, not released
     (out / "export_check.json").write_text(json.dumps(check, indent=2) + "\n")
     return check

@@ -1,4 +1,4 @@
-.PHONY: lint test validate-schema stub-model ingest report-corpus eval-trees eval-step export
+.PHONY: lint test validate-schema stub-model ingest report-corpus eval-trees eval-step export golden-mirror
 
 lint:
 	uv run ruff check .
@@ -28,3 +28,7 @@ eval-step:
 
 export:
 	uv run --extra ml python -m haptic_ai.cli export --config configs/step_cnn.yaml
+
+# Mirrored golden file from raw.npy + model_meta.json; no TF, runs on Windows (D25).
+golden-mirror:
+	uv run python -m haptic_ai.cli golden-mirror

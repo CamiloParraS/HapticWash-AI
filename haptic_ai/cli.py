@@ -56,6 +56,13 @@ def _export(args: argparse.Namespace) -> int:
     return 0
 
 
+def _golden_mirror(args: argparse.Namespace) -> int:
+    from haptic_ai.windows import write_mirrored_golden
+
+    print(f"OK {write_mirrored_golden()}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="haptic-ai")
     sub = parser.add_subparsers(dest="command")
@@ -77,6 +84,10 @@ def main() -> int:
     )
     p.add_argument("--config", required=True)
     p.set_defaults(func=_export)
+    p = sub.add_parser(
+        "golden-mirror", help="Write artifacts/golden/inputs_right.npy (no TF, no retraining)"
+    )
+    p.set_defaults(func=_golden_mirror)
 
     args = parser.parse_args()
     if not args.command:

@@ -1,5 +1,8 @@
 """Sliding windows and the window-label purity rule (SPEC 8.7)."""
 
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -55,3 +58,27 @@ def session_windows(
         for k, v in (("subject", subj), ("session", f"{subj}/{sess}"), ("wrist", wrist)):
             out[k].append(np.full(len(yw), v, dtype=object))
     return {k: np.concatenate(v) for k, v in out.items()}
+
+
+def golden_inputs(raw: np.ndarray, meta: dict, mirror: bool = False) -> np.ndarray:
+    """SPEC 9.2: golden raw ``(n, 6)`` -> [mirror] -> align -> bandpass -> windows -> z-score.
+
+    Uses only the preprocessing in ``model_meta.json``, so no retraining (D25).
+    """
+    fs, p = meta["sample_rate_hz"], meta["preprocessing"]
+    acc, gyr = raw[:, :3].astype(np.float64), raw[:, 3:].astype(np.float64)
+    if mirror:
+        acc, gyr = preprocess.mirror(acc, gyr)
+    acc, gyr = preprocess.gravity_align(acc, gyr, fs, p["gravity_lowpass_hz"])
+    x = preprocess.bandpass(np.hstack([acc, gyr]), fs, **p["bandpass"]).astype(np.float32)
+    size, stride = round(meta["window_size_s"] * fs), round(meta["window_stride_s"] * fs)
+    xw, _ = make_windows(x, np.zeros(len(x), np.int8), size, stride)
+    return ((xw - np.array(p["norm_mean"])) / np.array(p["norm_std"])).astype(np.float32)
+
+
+def write_mirrored_golden(art: Path = Path("artifacts")) -> Path:
+    """Write ``golden/inputs_right.npy``: the golden raw session mirrored (D25, app M4)."""
+    meta = json.loads((art / "model_meta.json").read_text())
+    out = art / "golden" / "inputs_right.npy"
+    np.save(out, golden_inputs(np.load(art / "golden" / "raw.npy"), meta, mirror=True))
+    return out

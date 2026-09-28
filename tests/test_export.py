@@ -61,3 +61,17 @@ def test_golden_raw_reproduces_inputs():
     p = meta["preprocessing"]
     z = (xw - np.array(p["norm_mean"])) / np.array(p["norm_std"])
     np.testing.assert_allclose(z, np.load(ART / "golden" / "inputs.npy"), atol=1e-4)
+
+
+def test_golden_raw_mirrored_reproduces_inputs_right():
+    """D25: mirrored golden raw -> same chain == inputs_right, and mirroring changed it."""
+    from haptic_ai.windows import golden_inputs
+
+    meta = json.loads((ART / "model_meta.json").read_text())
+    right = np.load(ART / "golden" / "inputs_right.npy")
+    assert right.dtype == np.float32
+    z = golden_inputs(np.load(ART / "golden" / "raw.npy"), meta, mirror=True)
+    np.testing.assert_allclose(z, right, atol=1e-4)
+    inputs = np.load(ART / "golden" / "inputs.npy")
+    assert right.shape == inputs.shape
+    assert np.abs(right - inputs).max() > 0.1  # guards against a no-op mirror
