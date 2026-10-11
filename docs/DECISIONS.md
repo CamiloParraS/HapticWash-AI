@@ -404,6 +404,36 @@ From the LOSO sweep on uwash only (`reports/M2_step_classifier.md`): 0.705 ± 0.
 0.10 dummy. The top three settings were within 0.005, inside the fold noise, so 3 s beats 5 s
 on latency, and it is the SPEC default. `moving_average_k = 2` (3 s at a 1.5 s stride). Export
 @ `c150c52`: 37,992 B, int8 F1 drop 0.0000. zhang_who external: left 0.56, right 0.44.
+
+## D24 — 2026-09-27 — App M3: LiteRT 1.4.2, JUnit 4, `com.hapticwash` package
+
+App-side (`HapticWash - Main`, branch `m3/app-skeleton`).
+
+- **LiteRT `com.google.ai.edge.litert:litert:1.4.2`**, pinned. 2.x ships `litert` and
+  `litert-api` under the same Android namespace, which AGP 9's manifest merger rejects; 1.4.2
+  has distinct namespaces, merges no permissions, keeps `org.tensorflow.lite.Interpreter`, and
+  bundles x86/x86_64 for the emulator. CPU, one thread.
+- **Filter design at runtime.** The app computes the Butterworth SOS from `model_meta.json`
+  (scipy's analog prototype -> lp2bp -> bilinear) instead of shipping coefficients, so §8.2
+  stays unchanged. The JVM golden test reproduces `golden/inputs.npy` from `golden/raw.npy`
+  with max |Δ| 0.0.
+- **Tests: JUnit 4** (already in the template), not the JUnit 5 + Turbine in SPEC-APP §2.1:
+  JUnit 5 on Android needs a third-party Gradle plugin, and nothing in M3 needs it.
+  `org.json` is a test-only dependency (android.jar's copy is a stub on the JVM).
+  `kotlinx-coroutines-android` 1.11.0 (the §8.4 `Flow` contract) and `androidx.test:runner`
+  1.7.0 (instrumented tests) are also new.
+- **R1 / §8.5 manifest checks are JVM tests** over AGP's merged debug and release manifests,
+  not instrumented: they cover the release manifest too and run without an emulator. They read
+  AGP's intermediate path, so an AGP upgrade may move it.
+- **Replay files go to app-internal storage.** The app holds no storage permission, so a
+  `/sdcard/Download` path from §8.5 is not readable. `scripts/replay_demo.sh` pipes the CSV in
+  with `run-as` and opens the activity first, because a background app can't start a
+  foreground service.
+- **Deferred to M4:** `postprocessing.moving_average_k` is parsed but not applied (M3 shows the
+  raw label), and timer-only mode shows no duration yet.
+- **Package `com.hapticwash`** (was `com.example.hapticwash`) for the wear module, to match the
+  §8.5 replay intent.
+
 ## D25 — 2026-09-28 — Mirrored golden file for the app's wrist mirroring (M4 slice 0)
 
 - **`golden/inputs_right.npy`**: `golden/raw.npy` mirrored with `preprocess.mirror` on the raw
@@ -422,3 +452,79 @@ on latency, and it is the SPEC default. `moving_average_k = 2` (3 s at a 1.5 s s
   constant. Mirror augmentation stays deferred (D21). The across-the-wrist x-axis assumption in
   `preprocess.mirror` is still unverified on hardware (D19, M6): the fixture proves the repos
   agree, not that the physics is right.
+
+## D26 — 2026-09-28 — App M4 batch replay on zhang_who: 5 of 10, reported as measured
+
+- **Result** (`HapticWash/reports/M4_replay.md`, model 0.1.0, `Wear_OS_Large_Round` AVD):
+  5 of 10 held-out zhang_who sessions match ground-truth Step Status on ≥ 4 of 5 Steps. The
+  §6 M4 criterion (≥ 8 of 10) is **not met**. Left wrist 4 of 5 pass, right wrist 1 of 5,
+  consistent with the external macro-F1 gap (left 0.56 / right 0.44, D23).
+- **Not tuned.** zhang_who is the external test set (D15); fitting Coverage thresholds to it
+  would be leakage. Thresholds stay at the §6 defaults and M4 moves on.
+- **Mirroring pays.** Right-wrist sessions replayed mirrored match 15 of 25 Step Statuses;
+  the same sessions forced unmirrored match 7 of 25. The app's Kotlin mirror was pulled
+  forward into slice (b) for this comparison; it reproduces D25's `inputs_right.npy`
+  (max |diff| 4.8e-7).
+- **Error shape.** Misses are app under-counting (`NOT_DETECTED`/`BRIEF` where ground truth
+  is `OK`), on Between fingers (6 of 10 sessions), Fingertips (5) and,
+  right wrist only, Palms (4 of 5); zero false `BRIEF`s, so hard
+  credit stays (the soft-credit trigger in M4-PLAN did not fire).
+- **The shortfall is the model, not the app** (to investigate in the AI repo). Same script,
+  same build, on the one uwash subject held out of training (`uwash_library_2`, D22), its
+  449 s session cut into washes at > 5 s NULL gaps (6 washes of ~48 s; a 6.9 s fragment
+  dropped as under the 10 s minimum): **6 of 6 pass, 30 of 30 Step Statuses match**, app
+  seconds within a few seconds of ground truth. Counting, smoothing and ground truth agree
+  in-distribution; the zhang_who gap is cross-dataset generalisation (new people, new watch,
+  and on the right wrist either the unverified mirror axis, D19, or genuinely different
+  motion). Limits: one subject, and every Step there is really ≥ 4.6 s, so a correct
+  `NOT_DETECTED` is never exercised.
+- **Re-evaluating a new model** is a rerun, not new work: copy the new `model.tflite` and
+  `model_meta.json` into the app's `wear/src/main/assets/model/` and the new
+  `golden/*.npy` into `wear/src/androidTest/assets/golden/`; run the app's unit and
+  `GoldenParityTest` checks; then `scripts/replay_batch.sh` on the zhang_who set (writes
+  `reports/M4_replay.md`; the previous one stays in git history to diff against) and on the
+  uwash set (cut command in the script header). If the new model trains on
+  `uwash_library_2`, recut the uwash set from whichever uwash subject it holds out, or the
+  uwash check is in-sample and proves nothing. Thresholds stay untuned on zhang_who.
+- Budgets, indicative on the emulator with a debug build: cold start median 1.84 s (over the
+  1.5 s budget; slice (d) moves model load off first composition and re-measures on a release
+  build); session heap ~22 MB Java + native PSS (within 40 MB).
+
+## D27 — 2026-09-29 — App M4 History and settings: JSON file and SharedPreferences, not Room/DataStore
+
+Amends SPEC-APP §2.1 and §6 M4 ("Room persistence").
+
+- **History** is one JSON file in app-internal storage (`files/history.json`) holding the last
+  20 real (`sensor`) Washes, newest first, parsed with the platform's `org.json` (no new
+  dependency). Each write goes to a temp file and then an atomic rename. A file that fails to
+  parse is renamed aside to `history.corrupt.json`, logged, and History starts empty, so the
+  data stays recoverable. Replay Washes go to a separate debug-only `replay_washes.json`
+  (cap 50).
+- **Settings** (Wrist side, Haptics, Progress ring) live in `SharedPreferences`.
+- **Why:** 20 rows and three flags don't need an SQL engine, KSP, migrations or a Flow-based
+  preferences store. Evidence it holds: `WashStoreTest` (restart, cap, corrupt file), and the
+  M4 UX audit (`docs/UX_AUDIT.md`), where History survives a process kill and a reboot.
+- Revisit if History grows past a few hundred rows or needs queries.
+
+## D28 — 2026-09-29 — App M4 navigation: `androidx.wear.compose:compose-navigation`
+
+- New dependency `androidx.wear.compose:compose-navigation` 1.5.6 (same version as
+  `compose-foundation`), for `SwipeDismissableNavHost`: a back stack with swipe-to-dismiss,
+  the Wear OS convention (§4.1.5).
+- Map, max depth 2: Start → In-progress → Summary (In-progress is popped), Start → History →
+  a past Wash's Summary, Start → Settings.
+- No result notification. A Wash that ends while the app is in the background is saved, and
+  its end haptics still fire.
+
+## D29 — 2026-09-30 — App M4 banned-language test: health-result language, not every word
+
+- §4.1.9 is read as prohibiting **health-result language**, not every technical occurrence of
+  a word. Generic uses ("Failed to load model", "Clean up history") pass.
+- `LanguageTest` (JVM) scans every `values*/strings.xml` in the wear module, strings and
+  string-array items, case-insensitive, on word boundaries. It bans the whole words
+  `guarantee`, `sanitized`, `sterile`, `germ-free`, `perfect`, `wrong`, `incorrect` and the
+  phrases `you missed`, `you failed`, `missed step`, `failed step`, `clean hands`,
+  `hands are clean`, `are clean`, `is clean`, `now clean`. A failure names the string and the
+  matched term. A self-check pins the matcher on known-bad and known-good samples.
+- A new string that is result language without one of these terms still needs review. The
+  list is a floor, not a proof.
