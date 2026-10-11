@@ -570,3 +570,39 @@ Amends SPEC-APP §2.1 and §6 M4 ("Room persistence").
   The honest check is `own_watch` in M6; both knobs stay calibration knobs for that.
 - **Cost:** a real stop is detected up to ~15 s late, so a Wash that ends after the target
   runs on that long before its Summary. Manual Stop still ends it at once.
+
+## D32 — 2026-10-11 — App M5 background listening: a `health` service with batched wake-up sensors
+
+Settles D30's open question.
+
+- **Service type `health`, not `dataSync`.** It needs `FOREGROUND_SERVICE_HEALTH` plus one
+  prerequisite; declaring `HIGH_SAMPLING_RATE_SENSORS` in the manifest is enough. That is an
+  install-time permission with no prompt, and not on SPEC-APP §2.1's forbidden list. Ticket
+  04 assumed `health` needed `BODY_SENSORS` or `ACTIVITY_RECOGNITION`; those are only two
+  of the ways to qualify.
+- **Why not `dataSync`:** with targetSdk ≥ 35 it gets 6 h of background run time per 24 h,
+  reset only when the user brings the app to the foreground. The docs list no exemption
+  (battery "unrestricted" included), so the toggle would quietly stop most days. A
+  `BOOT_COMPLETED` receiver can't start it either, which rules out ticket 05. And Play's
+  intended use is data transfer, not sensing. `health` has no time limit, may start at
+  boot, and is meant for long-running fitness-style tracking.
+- **One type for the app.** `WashService` moves from `dataSync` to `health` too, so a
+  Twist-started Wash doesn't depend on a background start of a second service type.
+  `FOREGROUND_SERVICE_DATA_SYNC` is dropped.
+- **Listening shape:** `registerListener` with a low sampling rate and a
+  `maxReportLatencyUs` (a calibration knob, ~1–2 s to start) on the **wake-up** variants
+  (`getDefaultSensor(type, true)`). Non-wake-up sensors fill their FIFO while the processor
+  sleeps and overwrite it, so a Twist with the screen off is lost. Wake-up sensors wake it
+  when the FIFO fills or the latency passes, so a Twist is seen up to one latency late. No
+  wake lock while listening; the Wash keeps its partial wake lock (D12).
+- **Unknown until a real watch:** whether wake-up accelerometer and gyroscope exist (wake-up
+  gyroscopes are often missing), their FIFO sizes (which cap the latency at a given rate),
+  and whether the detector holds at the lower rate. Ticket 04 starts with a probe that logs
+  these. Fallback without a wake-up gyroscope: a wake-up accelerometer as the trigger, then
+  the gyroscope on briefly to confirm the Twist.
+- **Costs and risks:** `health` and the `HIGH_SAMPLING_RATE_SENSORS` declaration need a
+  Play Console justification (a wash timer is a health use; review may still disagree).
+  Background listening still costs battery; ticket 06 measures it, and the §4.1.8 warning
+  stays.
+- Sources: developer.android.com — foreground service timeouts, service types, Android 15
+  behavior changes; source.android.com — sensor batching.
