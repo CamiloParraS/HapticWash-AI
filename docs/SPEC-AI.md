@@ -73,7 +73,7 @@ them in both READMEs.
 | `zhang_who` | Zhang et al., "Replication Data for: handwashing steps with IMU signals", KU Leuven RDR, DOI `10.48804/XHPPC7` | **Primary** — WHO step labels, 10 subjects, Byteflies 100 Hz. Trains the step classifier. |
 | `uwash` | Wang et al., UWash, IEEE TMC 2025 / arXiv `2112.06657`; data via `github.com/aiotgroup/UWash` | **Primary** — per-sample WHO step labels, 51 subjects × 5 locations, Samsung Gear Sport 50 Hz acc+gyro. Trains the step classifier (D14). |
 | `ablutomania` | Ablutomania-Set (Scholl & Wahl, 2021) | Handwashing plus deliberate confounders (e.g. rinsing a cup). Hard negatives. |
-| `ocdetect` | OCDetect, Zenodo record `13924901`; pipeline at `github.com/OCDetect/OCDetect-pipeline` | 22 participants, ~2600 h of all-day Wear OS recordings at 50 Hz acc+gyro, ~2930 labelled washes. Realistic NULL/background for spotting. **Ingested at M5, not M1** (D8). |
+| `ocdetect` | OCDetect, Zenodo record `13924901`; pipeline at `github.com/OCDetect/OCDetect-pipeline` | 22 participants, ~2600 h of all-day Wear OS recordings at 50 Hz acc+gyro, ~2930 labelled washes. Realistic NULL/background for spotting. **Not ingested** while spotting is Future Work (D8, D30); M5-App replays one participant-day to count false Twist starts. |
 | `own_phone` | Self-collected, phone strapped to forearm | Augmentation and confounder collection **only**. Never used for evaluation. |
 | `own_watch` | Borrowed Wear OS device (M6) | **Held-out test set. Never used for training or model selection.** |
 
@@ -180,10 +180,13 @@ number for how well it generalizes to people it has never seen.
 
 ---
 
-### M5-AI — Spotting model *(optional for v1)*
+### M5-AI — Spotting model *(deferred to Future Work, Core §13, D30)*
+
+> Not scheduled. M5-App no longer depends on it: M5 is Twist start and Auto-end. The text
+> below is kept unchanged so the work can be picked up later.
 
 **Objective.** Train a binary wash-vs-NULL model with a false-positive rate low enough to
-not be annoying. The on-watch runtime (gating, duty-cycling, toggle) is M5-App.
+not be annoying. The on-watch runtime (gating, duty-cycling, toggle) would be app work.
 
 Calibrate expectations before starting: on realistic all-day data, published work reports
 a maximum per-subject F1 around 0.77 with a mean near 0.33 against a chance level of

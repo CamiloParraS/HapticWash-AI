@@ -10,7 +10,7 @@
 > | Spec | Location | Owns |
 > |---|---|---|
 > | **Core** (this file) | `HapticWash-AI/docs/HapticWash-SPEC.md` | What the product is, label set, data/model contracts, parity, M0/M6, rules, risks |
-> | **AI** | [`HapticWash-AI/docs/SPEC-AI.md`](SPEC-AI.md) | Datasets, preprocessing, training, evaluation, export (M1, M2, M5-AI) |
+> | **AI** | [`HapticWash-AI/docs/SPEC-AI.md`](SPEC-AI.md) | Datasets, preprocessing, training, evaluation, export (M1, M2; M5-AI deferred, §13) |
 > | **App** | `HapticWash - Main/docs/SPEC-APP.md` | Wear OS app: sensing, on-device inference, UI, storage, privacy (M3, M4, M5-App) |
 >
 > Section numbers (§) are **global** and unchanged from the original single spec, so
@@ -36,15 +36,15 @@
 | 4.4 | Determinism | AI |
 | 5 | Data sources | AI |
 | 6 — M0, M6 | Bootstrap; hardware validation | Core |
-| 6 — M1, M2, M5-AI | Corpus; step classifier; spotting model | AI |
-| 6 — M3, M4, M5-App | App skeleton + parity; coverage/UI; always-on runtime | App |
+| 6 — M1, M2, M5-AI | Corpus; step classifier; spotting model (deferred, §13) | AI |
+| 6 — M3, M4, M5-App | App skeleton + parity; coverage/UI; Twist start and Auto-end | App |
 | 7 | Milestone dependency graph | Core |
 | 8.1, 8.2, 8.3, 8.7 | CSV schema, `model_meta.json`, tensor contract, preprocessing | Core |
 | 8.4, 8.5, 8.6 | `MotionSource`, replay intent, session/coverage | App |
 | 9.1, 9.2 | Global gates; golden-file parity | Core |
 | 9.3 | Replay end-to-end test | App |
 | 9.4 | Evaluation integrity rules | AI |
-| 10, 11, 12 | Agent rules, risks, open questions | Core |
+| 10, 11, 12, 13 | Agent rules, risks, open questions, future work | Core |
 
 ---
 
@@ -69,12 +69,12 @@ main failure mode of prior art in this space.
 | Question | Is a handwash happening at all? | Which gesture is this window? |
 | Class balance | ~1:99 (wash vs. all daily activity) | roughly balanced within a wash |
 | Difficulty | Hard. Confounded by dishwashing, tooth brushing, laundry, kneading, hair brushing | Moderate |
-| Required for | M5 (always-on mode) | M2 (core feature) |
+| Required for | Future Work (§13) | M2 (core feature) |
 
 **Consequence for scope:** v1 ships **manual mode** — the user taps "Start wash" and the
-step classifier runs for the duration of the session. Always-on spotting is added in M5
-behind a settings toggle and is explicitly labelled experimental. Do not block v1 on
-spotting.
+step classifier runs for the duration of the session. M5 adds a hands-free start that is
+**not** spotting: a deliberate wrist gesture (Twist start), plus Auto-end on sustained
+`NULL` (D30). Spotting is Future Work (§13). Do not block v1 on spotting.
 
 ### 1.3 Gesture label set (canonical)
 
@@ -206,7 +206,7 @@ begins, so the app and the pipeline can proceed in parallel without drift.
 
 ---
 
-M1, M2, M5-AI → AI spec. M3, M4, M5-App → App spec.
+M1, M2, M5-AI → AI spec (M5-AI deferred to §13, D30). M3, M4, M5-App → App spec.
 
 ---
 
@@ -248,8 +248,11 @@ unverified. This section is what distinguishes the project from a hackathon buil
 ──────┼──────────────┼──────────────┼──────
  M0 ──┼─> M1 ──> M2 ─┼─> M3 ──> M4 ─┼─> M6
       │              │         │    │
-      │   M5-AI ─────┼──> M5-App    │   (M5 optional, before M6)
+      │              │         └─> M5-App   (optional, before M6)
 ```
+
+M5-App needs only M4: Twist start and Auto-end use the M2 step model, no second model.
+M5-AI (spotting) is Future Work (§13) and has no edge here.
 
 M3 may begin in parallel with M2 using the M0 stub model, since the stub has correct
 shapes. This is the recommended parallelization for agent work.
@@ -421,7 +424,8 @@ Replay end-to-end test (§9.3) → App spec. Evaluation integrity rules (§9.4) 
 | `zhang_who` step labels do not map cleanly to §1.3 | Medium | Explicit mapping doc; map ambiguous cases to `WASH_OTHER`; consider collapsing to 3 coarse steps as a documented fallback |
 | No device ever becomes available | Medium | Replay harness + parity tests carry the project; `docs/LIMITATIONS.md` states the gap plainly. Do not fake hardware results. |
 | Dataset licence prohibits intended use | Medium | Check at M0, before any modelling work depends on it |
-| Always-on drains battery unacceptably | High | M5 is optional, off by default, duty-cycled, warned |
+| Twist start's background listening drains battery unacceptably | High | M5 is optional, off by default, low sample rate, warned; estimate in M5, measured at M6 |
+| Twist start fires on ordinary wrist motion | Medium | Three alternating rotations, refractory period, Auto-end cancels an idle start; false starts counted on an `ocdetect` day |
 | Scope creep into watchOS, cloud, or LLM features | Medium | §1.4 non-goals; §4.2 hard rules |
 
 ---
@@ -433,3 +437,14 @@ Replay end-to-end test (§9.3) → App spec. Evaluation integrity rules (§9.4) 
 - [ ] Confirm `zhang_who` step label granularity matches §1.3 or requires collapsing.
 - [ ] Identify a specific borrowable Wear OS device and target date for M6.
 - [ ] Decide whether Tier 3 phone summaries are in scope at all.
+
+---
+
+## 13. Future Work
+
+Not scheduled. Nothing in v1 depends on it.
+
+- **Automatic wash detection (spotting).** A binary wash-vs-`NULL` model that starts a Wash
+  with no gesture at all. Specified as M5-AI in SPEC-AI, kept there unchanged so it can be
+  picked up later. The app side would add a second model, gated inference and
+  duty-cycling. Deferred in D30 in favour of Twist start.

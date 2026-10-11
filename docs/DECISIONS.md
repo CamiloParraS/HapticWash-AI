@@ -528,3 +528,45 @@ Amends SPEC-APP §2.1 and §6 M4 ("Room persistence").
   matched term. A self-check pins the matcher on known-bad and known-good samples.
 - A new string that is result language without one of these terms still needs review. The
   list is a floor, not a proof.
+
+## D30 — 2026-10-10 — M5 is Twist start and Auto-end; spotting moves to Future Work
+
+- **M5-App** is now: a Twist (three quick forearm rotations) starts a Wash, behind a toggle
+  that is off by default and warns about battery (§4.1.8). Every model-backed Wash ends
+  itself on sustained `NULL` (Auto-end): cancelled if no washing is seen within 30 s, a
+  keep-going nudge if washing pauses before 40 s, ended normally if washing stops after
+  40 s. Full text: SPEC-APP M5-App and SPEC-CHANGELOG C11.
+- **M5-AI** (spotting) moves to Future Work (Core §13). Its SPEC-AI text is kept, marked
+  deferred. The M5-AI → M5-App edge is gone from §7; M5-App needs only M4.
+- **Why not spotting now:** it needs `ocdetect` ingest (31.6 GB), a second model,
+  duty-cycling, and precision tuning. Published all-day spotting F1 has a mean near 0.33,
+  so false starts would be common. A deliberate gesture is cheap, explainable and testable
+  with the data already here.
+- **Why not the platform's wrist gestures:** Wear OS wrist gestures (flick in/out) drive
+  system navigation; a third-party app can't bind its own action to them, and they vary by
+  device. The Twist is detected by the app from the same accelerometer and gyroscope.
+- **`ocdetect`** stays un-ingested (D8 amended). M5 replays one participant-day through the
+  app to count false Twist starts; that is evaluation of a heuristic, not training.
+- **Open, to settle in M5:** with targetSdk 37 a `dataSync` foreground service is capped at
+  about 6 h a day, and the `health` type needs a permission §2.1 forbids. How background
+  listening runs is decided when it is built, with its own D-entry.
+
+## D31 — 2026-10-11 — App M5 Auto-end: confident `NULL` for 15 s; right-wrist early stops were a replay bug
+
+- **Setting** (`AutoEndConfig` in the app, `ed75961`): a `NULL` stretch counts only windows
+  whose smoothed `NULL` probability is ≥ 0.8; a lower one breaks the stretch. "Sustained" is
+  15 s. Give-up window 30 s, target 40 s, as in D30.
+- **Why:** the first setting (8 s of any top-1 `NULL`) ended `zhang_who_9_1_left` at 52.5 s,
+  27 s before its labelled washing did. The model emits short, low-confidence `NULL` mid-wash
+  on zhang_who (the same generalisation gap as D26). With 15 s at 0.8, none of the 10 zhang
+  replays ends before its labelled washing.
+- **Right-wrist early stops: not a model issue.** Ticket 03 first recorded them as one.
+  `scripts/replay_demo.sh` did not pass the CSV's wrist column, so right-wrist sessions
+  replayed unmirrored and looked like confident `NULL` mid-wash. Fixed in the same commit;
+  `replay_batch.sh` always passed it, so D26's numbers are unaffected.
+- **Caveat: chosen against zhang_who.** D26 keeps Coverage thresholds untuned on zhang_who
+  (D15). These knobs were checked against it for one safety condition (never end before
+  washing does), not fitted to a score, but zhang_who is no longer a clean test of Auto-end.
+  The honest check is `own_watch` in M6; both knobs stay calibration knobs for that.
+- **Cost:** a real stop is detected up to ~15 s late, so a Wash that ends after the target
+  runs on that long before its Summary. Manual Stop still ends it at once.
